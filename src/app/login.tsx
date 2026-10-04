@@ -64,6 +64,7 @@ export default function LoginScreen() {
             <TouchableOpacity
               style={styles.loginButton}
               activeOpacity={0.8}
+              onPress={() => router.replace('/cliente')}
             >
               <Text style={styles.loginButtonText}>Entrar</Text>
             </TouchableOpacity>
