@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
+
 import {
   Alert,
   SafeAreaView,
@@ -14,14 +15,38 @@ import {
 } from 'react-native';
 
 const categorias = [
-  { nome: 'Montador', icone: 'construct-outline' },
-  { nome: 'Ar-condicionado', icone: 'snow-outline' },
-  { nome: 'Eletricista', icone: 'flash-outline' },
-  { nome: 'Encanador', icone: 'water-outline' },
-  { nome: 'Pintor', icone: 'color-palette-outline' },
-  { nome: 'Limpeza', icone: 'sparkles-outline' },
-  { nome: 'Marceneiro', icone: 'hammer-outline' },
-  { nome: 'Mais serviços', icone: 'ellipsis-horizontal' },
+  {
+    nome: 'Montador',
+    icone: 'construct-outline',
+  },
+  {
+    nome: 'Ar-condicionado',
+    icone: 'snow-outline',
+  },
+  {
+    nome: 'Eletricista',
+    icone: 'flash-outline',
+  },
+  {
+    nome: 'Encanador',
+    icone: 'water-outline',
+  },
+  {
+    nome: 'Pintor',
+    icone: 'color-palette-outline',
+  },
+  {
+    nome: 'Limpeza',
+    icone: 'sparkles-outline',
+  },
+  {
+    nome: 'Marceneiro',
+    icone: 'hammer-outline',
+  },
+  {
+    nome: 'Mais serviços',
+    icone: 'ellipsis-horizontal',
+  },
 ];
 
 const profissionais = [
@@ -49,21 +74,15 @@ export default function ClienteScreen() {
   const [busca, setBusca] = useState('');
 
   function abrirCategoria(servico: string) {
-    if (servico === 'Mais serviços') {
-      router.push({
-        pathname: '/profissionais',
-        params: {
-          servico: 'Todos os serviços',
-        },
-      });
-
-      return;
-    }
+    const categoria =
+      servico === 'Mais serviços'
+        ? 'Todos os serviços'
+        : servico;
 
     router.push({
       pathname: '/profissionais',
       params: {
-        servico,
+        servico: categoria,
       },
     });
   }
@@ -97,6 +116,15 @@ export default function ClienteScreen() {
       params: {
         id,
         servico,
+      },
+    });
+  }
+
+  function abrirTodosProfissionais() {
+    router.push({
+      pathname: '/profissionais',
+      params: {
+        servico: 'Todos os serviços',
       },
     });
   }
@@ -150,9 +178,13 @@ export default function ClienteScreen() {
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.brand}>CHAMA</Text>
+          <Text style={styles.brand}>
+            CHAMA
+          </Text>
 
-          <Text style={styles.greeting}>Olá!</Text>
+          <Text style={styles.greeting}>
+            Olá!
+          </Text>
 
           <Text style={styles.question}>
             Qual serviço você precisa hoje?
@@ -208,14 +240,7 @@ export default function ClienteScreen() {
             </Text>
 
             <TouchableOpacity
-              onPress={() =>
-                router.push({
-                  pathname: '/profissionais',
-                  params: {
-                    servico: 'Todos os serviços',
-                  },
-                })
-              }
+              onPress={abrirTodosProfissionais}
             >
               <Text style={styles.seeAll}>
                 Ver todas
@@ -261,21 +286,14 @@ export default function ClienteScreen() {
             </Text>
 
             <Text style={styles.bannerDescription}>
-              Encontre o profissional ideal para o serviço
-              que você precisa.
+              Encontre o profissional ideal para o
+              serviço que você precisa.
             </Text>
 
             <TouchableOpacity
               style={styles.bannerButton}
               activeOpacity={0.8}
-              onPress={() =>
-                router.push({
-                  pathname: '/profissionais',
-                  params: {
-                    servico: 'Todos os serviços',
-                  },
-                })
-              }
+              onPress={abrirTodosProfissionais}
             >
               <Text style={styles.bannerButtonText}>
                 Encontrar profissional
@@ -301,14 +319,7 @@ export default function ClienteScreen() {
             </Text>
 
             <TouchableOpacity
-              onPress={() =>
-                router.push({
-                  pathname: '/profissionais',
-                  params: {
-                    servico: 'Todos os serviços',
-                  },
-                })
-              }
+              onPress={abrirTodosProfissionais}
             >
               <Text style={styles.seeAll}>
                 Ver todos
@@ -360,7 +371,11 @@ export default function ClienteScreen() {
                   {profissional.servico}
                 </Text>
 
-                <View style={styles.professionalLocation}>
+                <View
+                  style={
+                    styles.professionalLocation
+                  }
+                >
                   <Ionicons
                     name="location-outline"
                     size={13}
@@ -405,10 +420,7 @@ export default function ClienteScreen() {
           style={styles.navItem}
           activeOpacity={0.7}
           onPress={() =>
-            Alert.alert(
-              'Pedidos',
-              'A área de pedidos será conectada na próxima etapa do MVP.'
-            )
+            router.push('/pedidos')
           }
         >
           <Ionicons

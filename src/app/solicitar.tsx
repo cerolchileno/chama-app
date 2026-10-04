@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
+
 import {
   Alert,
   SafeAreaView,
@@ -12,6 +13,10 @@ import {
   View,
 } from 'react-native';
 
+import {
+  adicionarSolicitacao,
+} from '@/constants/solicitacoes';
+
 export default function SolicitarScreen() {
   const { profissional, servico } =
     useLocalSearchParams<{
@@ -21,9 +26,10 @@ export default function SolicitarScreen() {
 
   const [descricao, setDescricao] = useState('');
   const [endereco, setEndereco] = useState('');
+  const [enviando, setEnviando] = useState(false);
 
   function enviarSolicitacao() {
-    if (!descricao.trim() || !endereco.trim()) {
+    if (!endereco.trim() || !descricao.trim()) {
       Alert.alert(
         'Preencha os dados',
         'Informe o endereço e descreva o serviço que você precisa.'
@@ -32,13 +38,30 @@ export default function SolicitarScreen() {
       return;
     }
 
+    setEnviando(true);
+
+    adicionarSolicitacao({
+      id: Date.now().toString(),
+      profissional:
+        profissional || 'Profissional não informado',
+      servico: servico || 'Serviço',
+      endereco: endereco.trim(),
+      descricao: descricao.trim(),
+      status: 'PENDENTE',
+      data: new Date().toLocaleDateString('pt-BR'),
+    });
+
+    setEnviando(false);
+
     Alert.alert(
       'Solicitação enviada!',
-      `Seu pedido foi enviado para ${profissional}.`,
+      `Seu pedido foi enviado para ${
+        profissional || 'o profissional'
+      }.`,
       [
         {
-          text: 'OK',
-          onPress: () => router.replace('/cliente'),
+          text: 'Ver meus pedidos',
+          onPress: () => router.replace('/pedidos'),
         },
       ]
     );
@@ -47,7 +70,10 @@ export default function SolicitarScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
           <Ionicons
             name="arrow-back"
             size={25}
@@ -59,12 +85,13 @@ export default function SolicitarScreen() {
           Solicitar serviço
         </Text>
 
-        <View style={{ width: 25 }} />
+        <View style={styles.headerSpace} />
       </View>
 
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         <View style={styles.professionalCard}>
           <View style={styles.avatar}>
@@ -75,12 +102,26 @@ export default function SolicitarScreen() {
             />
           </View>
 
-          <View>
+          <View style={styles.professionalInfo}>
             <Text style={styles.professionalName}>
-              {profissional}
+              {profissional || 'Profissional'}
             </Text>
 
-            <Text style={styles.service}>{servico}</Text>
+            <Text style={styles.service}>
+              {servico || 'Serviço'}
+            </Text>
+          </View>
+
+          <View style={styles.badge}>
+            <Ionicons
+              name="shield-checkmark-outline"
+              size={15}
+              color="#F04B2F"
+            />
+
+            <Text style={styles.badgeText}>
+              CHAMA
+            </Text>
           </View>
         </View>
 
@@ -89,11 +130,13 @@ export default function SolicitarScreen() {
         </Text>
 
         <Text style={styles.subtitle}>
-          Essas informações ajudarão o profissional a entender
-          melhor a solicitação.
+          Passe as informações necessárias para que o
+          profissional possa analisar sua solicitação.
         </Text>
 
-        <Text style={styles.label}>Endereço do serviço</Text>
+        <Text style={styles.label}>
+          Endereço do serviço
+        </Text>
 
         <View style={styles.inputContainer}>
           <Ionicons
@@ -123,7 +166,12 @@ export default function SolicitarScreen() {
           placeholderTextColor="#999"
           multiline
           textAlignVertical="top"
+          maxLength={500}
         />
+
+        <Text style={styles.counter}>
+          {descricao.length}/500
+        </Text>
 
         <View style={styles.notice}>
           <Ionicons
@@ -133,17 +181,31 @@ export default function SolicitarScreen() {
           />
 
           <Text style={styles.noticeText}>
-            O profissional receberá sua solicitação e poderá
-            aceitar ou recusar o atendimento.
+            Ao enviar, sua solicitação ficará como
+            Pendente. O profissional poderá aceitar ou
+            recusar o atendimento.
           </Text>
         </View>
 
         <TouchableOpacity
-          style={styles.button}
+          style={[
+            styles.button,
+            enviando && styles.buttonDisabled,
+          ]}
           onPress={enviarSolicitacao}
+          disabled={enviando}
+          activeOpacity={0.8}
         >
+          <Ionicons
+            name="paper-plane-outline"
+            size={20}
+            color="#FFFFFF"
+          />
+
           <Text style={styles.buttonText}>
-            Enviar solicitação
+            {enviando
+              ? 'Enviando...'
+              : 'Enviar solicitação'}
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -164,6 +226,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEEEEE',
+  },
+
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
   },
 
   headerTitle: {
@@ -172,8 +242,13 @@ const styles = StyleSheet.create({
     color: '#1F2328',
   },
 
+  headerSpace: {
+    width: 40,
+  },
+
   content: {
     padding: 22,
+    paddingBottom: 45,
   },
 
   professionalCard: {
@@ -197,6 +272,10 @@ const styles = StyleSheet.create({
     marginRight: 13,
   },
 
+  professionalInfo: {
+    flex: 1,
+  },
+
   professionalName: {
     fontSize: 16,
     fontWeight: '800',
@@ -207,6 +286,23 @@ const styles = StyleSheet.create({
     color: '#F04B2F',
     fontSize: 13,
     marginTop: 4,
+    fontWeight: '600',
+  },
+
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#FFF1EE',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 9,
+  },
+
+  badgeText: {
+    color: '#F04B2F',
+    fontSize: 9,
+    fontWeight: '800',
   },
 
   title: {
@@ -261,6 +357,13 @@ const styles = StyleSheet.create({
     color: '#1F2328',
   },
 
+  counter: {
+    color: '#999',
+    fontSize: 11,
+    textAlign: 'right',
+    marginTop: 6,
+  },
+
   notice: {
     flexDirection: 'row',
     backgroundColor: '#FFF1EE',
@@ -283,7 +386,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#F04B2F',
     alignItems: 'center',
     justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
     marginTop: 25,
+  },
+
+  buttonDisabled: {
+    opacity: 0.6,
   },
 
   buttonText: {
