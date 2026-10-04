@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useState } from 'react';
 import {
+  Alert,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -24,19 +26,19 @@ const categorias = [
 
 const profissionais = [
   {
-    id: 1,
+    id: '1',
     nome: 'Carlos Silva',
     servico: 'Eletricista',
     nota: '4,9',
   },
   {
-    id: 2,
+    id: '2',
     nome: 'Rafael Lima',
     servico: 'Ar-condicionado',
     nota: '4,8',
   },
   {
-    id: 3,
+    id: '3',
     nome: 'Juliana Costa',
     servico: 'Limpeza',
     nota: '4,9',
@@ -44,6 +46,61 @@ const profissionais = [
 ];
 
 export default function ClienteScreen() {
+  const [busca, setBusca] = useState('');
+
+  function abrirCategoria(servico: string) {
+    if (servico === 'Mais serviços') {
+      router.push({
+        pathname: '/profissionais',
+        params: {
+          servico: 'Todos os serviços',
+        },
+      });
+
+      return;
+    }
+
+    router.push({
+      pathname: '/profissionais',
+      params: {
+        servico,
+      },
+    });
+  }
+
+  function pesquisarServico() {
+    const termo = busca.trim();
+
+    if (!termo) {
+      Alert.alert(
+        'Digite um serviço',
+        'Informe o serviço que você está procurando.'
+      );
+
+      return;
+    }
+
+    router.push({
+      pathname: '/profissionais',
+      params: {
+        servico: termo,
+      },
+    });
+  }
+
+  function abrirProfissional(
+    id: string,
+    servico: string
+  ) {
+    router.push({
+      pathname: '/profissional',
+      params: {
+        id,
+        servico,
+      },
+    });
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
@@ -51,26 +108,40 @@ export default function ClienteScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
       >
         {/* CABEÇALHO */}
 
         <View style={styles.header}>
           <View style={styles.headerTop}>
-            <View>
-              <View style={styles.locationRow}>
-                <Ionicons name="location" size={19} color="#FFFFFF" />
+            <View style={styles.locationRow}>
+              <Ionicons
+                name="location"
+                size={19}
+                color="#FFFFFF"
+              />
 
-                <Text style={styles.location}>Maricá, RJ</Text>
+              <Text style={styles.location}>
+                Maricá, RJ
+              </Text>
 
-                <Ionicons
-                  name="chevron-down"
-                  size={15}
-                  color="#FFFFFF"
-                />
-              </View>
+              <Ionicons
+                name="chevron-down"
+                size={15}
+                color="#FFFFFF"
+              />
             </View>
 
-            <TouchableOpacity style={styles.notificationButton}>
+            <TouchableOpacity
+              style={styles.notificationButton}
+              activeOpacity={0.7}
+              onPress={() =>
+                Alert.alert(
+                  'Notificações',
+                  'Você ainda não possui novas notificações.'
+                )
+              }
+            >
               <Ionicons
                 name="notifications-outline"
                 size={24}
@@ -79,6 +150,8 @@ export default function ClienteScreen() {
             </TouchableOpacity>
           </View>
 
+          <Text style={styles.brand}>CHAMA</Text>
+
           <Text style={styles.greeting}>Olá!</Text>
 
           <Text style={styles.question}>
@@ -86,24 +159,67 @@ export default function ClienteScreen() {
           </Text>
 
           <View style={styles.searchContainer}>
-            <Ionicons name="search" size={21} color="#777777" />
+            <Ionicons
+              name="search"
+              size={21}
+              color="#777777"
+            />
 
             <TextInput
               style={styles.searchInput}
               placeholder="Qual serviço você precisa?"
               placeholderTextColor="#8B8B8B"
+              value={busca}
+              onChangeText={setBusca}
+              returnKeyType="search"
+              onSubmitEditing={pesquisarServico}
             />
+
+            {busca.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setBusca('')}
+              >
+                <Ionicons
+                  name="close-circle"
+                  size={20}
+                  color="#A0A0A0"
+                />
+              </TouchableOpacity>
+            )}
           </View>
+
+          <TouchableOpacity
+            style={styles.searchButton}
+            activeOpacity={0.8}
+            onPress={pesquisarServico}
+          >
+            <Text style={styles.searchButtonText}>
+              Buscar profissionais
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* CATEGORIAS */}
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Categorias</Text>
+            <Text style={styles.sectionTitle}>
+              Categorias
+            </Text>
 
-            <TouchableOpacity>
-              <Text style={styles.seeAll}>Ver todas</Text>
+            <TouchableOpacity
+              onPress={() =>
+                router.push({
+                  pathname: '/profissionais',
+                  params: {
+                    servico: 'Todos os serviços',
+                  },
+                })
+              }
+            >
+              <Text style={styles.seeAll}>
+                Ver todas
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -113,6 +229,9 @@ export default function ClienteScreen() {
                 key={categoria.nome}
                 style={styles.categoryItem}
                 activeOpacity={0.7}
+                onPress={() =>
+                  abrirCategoria(categoria.nome)
+                }
               >
                 <View style={styles.categoryIcon}>
                   <Ionicons
@@ -142,11 +261,22 @@ export default function ClienteScreen() {
             </Text>
 
             <Text style={styles.bannerDescription}>
-              Encontre o profissional ideal para o serviço que você
-              precisa.
+              Encontre o profissional ideal para o serviço
+              que você precisa.
             </Text>
 
-            <TouchableOpacity style={styles.bannerButton}>
+            <TouchableOpacity
+              style={styles.bannerButton}
+              activeOpacity={0.8}
+              onPress={() =>
+                router.push({
+                  pathname: '/profissionais',
+                  params: {
+                    servico: 'Todos os serviços',
+                  },
+                })
+              }
+            >
               <Text style={styles.bannerButtonText}>
                 Encontrar profissional
               </Text>
@@ -170,8 +300,19 @@ export default function ClienteScreen() {
               Profissionais em destaque
             </Text>
 
-            <TouchableOpacity>
-              <Text style={styles.seeAll}>Ver todos</Text>
+            <TouchableOpacity
+              onPress={() =>
+                router.push({
+                  pathname: '/profissionais',
+                  params: {
+                    servico: 'Todos os serviços',
+                  },
+                })
+              }
+            >
+              <Text style={styles.seeAll}>
+                Ver todos
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -184,6 +325,12 @@ export default function ClienteScreen() {
                 key={profissional.id}
                 style={styles.professionalCard}
                 activeOpacity={0.8}
+                onPress={() =>
+                  abrirProfissional(
+                    profissional.id,
+                    profissional.servico
+                  )
+                }
               >
                 <View style={styles.professionalAvatar}>
                   <Ionicons
@@ -220,7 +367,11 @@ export default function ClienteScreen() {
                     color="#777"
                   />
 
-                  <Text style={styles.professionalLocationText}>
+                  <Text
+                    style={
+                      styles.professionalLocationText
+                    }
+                  >
                     Maricá, RJ
                   </Text>
                 </View>
@@ -235,36 +386,82 @@ export default function ClienteScreen() {
       {/* MENU INFERIOR */}
 
       <View style={styles.bottomNavigation}>
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="home" size={23} color="#F04B2F" />
-          <Text style={styles.navTextActive}>Início</Text>
+        <TouchableOpacity
+          style={styles.navItem}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name="home"
+            size={23}
+            color="#F04B2F"
+          />
+
+          <Text style={styles.navTextActive}>
+            Início
+          </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity
+          style={styles.navItem}
+          activeOpacity={0.7}
+          onPress={() =>
+            Alert.alert(
+              'Pedidos',
+              'A área de pedidos será conectada na próxima etapa do MVP.'
+            )
+          }
+        >
           <Ionicons
             name="document-text-outline"
             size={23}
             color="#737373"
           />
-          <Text style={styles.navText}>Pedidos</Text>
+
+          <Text style={styles.navText}>
+            Pedidos
+          </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity
+          style={styles.navItem}
+          activeOpacity={0.7}
+          onPress={() =>
+            Alert.alert(
+              'Favoritos',
+              'A área de profissionais favoritos será implementada em uma próxima etapa.'
+            )
+          }
+        >
           <Ionicons
             name="heart-outline"
             size={23}
             color="#737373"
           />
-          <Text style={styles.navText}>Favoritos</Text>
+
+          <Text style={styles.navText}>
+            Favoritos
+          </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity
+          style={styles.navItem}
+          activeOpacity={0.7}
+          onPress={() =>
+            Alert.alert(
+              'Perfil',
+              'A área de perfil do cliente será implementada em uma próxima etapa.'
+            )
+          }
+        >
           <Ionicons
             name="person-outline"
             size={23}
             color="#737373"
           />
-          <Text style={styles.navText}>Perfil</Text>
+
+          <Text style={styles.navText}>
+            Perfil
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -294,7 +491,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 18,
   },
 
   locationRow: {
@@ -316,6 +513,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  brand: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '900',
+    letterSpacing: 2,
+    marginBottom: 8,
   },
 
   greeting: {
@@ -345,6 +550,21 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#222222',
     fontSize: 15,
+  },
+
+  searchButton: {
+    height: 47,
+    borderRadius: 14,
+    backgroundColor: '#1F2328',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 11,
+  },
+
+  searchButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
   },
 
   section: {
