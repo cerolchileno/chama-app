@@ -23,3 +23,28 @@ export function adicionarSolicitacao(
 ) {
   solicitacoes.unshift(solicitacao);
 }
+
+export function alterarStatusSolicitacao(
+  id: string,
+  novoStatus: StatusSolicitacao
+) {
+  const solicitacao = solicitacoes.find(
+    (item) => item.id === id
+  );
+
+  if (!solicitacao) {
+    return false;
+  }
+
+  solicitacao.status = novoStatus;
+
+  return true;
+}
+
+export function buscarSolicitacaoPorId(
+  id: string
+) {
+  return solicitacoes.find(
+    (item) => item.id === id
+  );
+}
