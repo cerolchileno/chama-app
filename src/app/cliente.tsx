@@ -15,38 +15,14 @@ import {
 } from 'react-native';
 
 const categorias = [
-  {
-    nome: 'Montador',
-    icone: 'construct-outline',
-  },
-  {
-    nome: 'Ar-condicionado',
-    icone: 'snow-outline',
-  },
-  {
-    nome: 'Eletricista',
-    icone: 'flash-outline',
-  },
-  {
-    nome: 'Encanador',
-    icone: 'water-outline',
-  },
-  {
-    nome: 'Pintor',
-    icone: 'color-palette-outline',
-  },
-  {
-    nome: 'Limpeza',
-    icone: 'sparkles-outline',
-  },
-  {
-    nome: 'Marceneiro',
-    icone: 'hammer-outline',
-  },
-  {
-    nome: 'Mais serviços',
-    icone: 'ellipsis-horizontal',
-  },
+  { nome: 'Montador', icone: 'construct-outline' },
+  { nome: 'Ar-condicionado', icone: 'snow-outline' },
+  { nome: 'Eletricista', icone: 'flash-outline' },
+  { nome: 'Encanador', icone: 'water-outline' },
+  { nome: 'Pintor', icone: 'color-palette-outline' },
+  { nome: 'Limpeza', icone: 'sparkles-outline' },
+  { nome: 'Marceneiro', icone: 'hammer-outline' },
+  { nome: 'Mais serviços', icone: 'ellipsis-horizontal' },
 ];
 
 const profissionais = [
@@ -95,7 +71,6 @@ export default function ClienteScreen() {
         'Digite um serviço',
         'Informe o serviço que você está procurando.'
       );
-
       return;
     }
 
@@ -127,6 +102,44 @@ export default function ClienteScreen() {
         servico: 'Todos os serviços',
       },
     });
+  }
+
+  function abrirPerfil() {
+    Alert.alert(
+      'Perfil do cliente',
+      'O que você deseja fazer?',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Sair da conta',
+          style: 'destructive',
+          onPress: () => confirmarSaida(),
+        },
+      ]
+    );
+  }
+
+  function confirmarSaida() {
+    Alert.alert(
+      'Sair da conta',
+      'Tem certeza que deseja sair da sua conta?',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Sair',
+          style: 'destructive',
+          onPress: () => {
+            router.replace('/login');
+          },
+        },
+      ]
+    );
   }
 
   return (
@@ -343,7 +356,9 @@ export default function ClienteScreen() {
                   )
                 }
               >
-                <View style={styles.professionalAvatar}>
+                <View
+                  style={styles.professionalAvatar}
+                >
                   <Ionicons
                     name="person"
                     size={38}
@@ -351,7 +366,9 @@ export default function ClienteScreen() {
                   />
                 </View>
 
-                <Text style={styles.professionalName}>
+                <Text
+                  style={styles.professionalName}
+                >
                   {profissional.nome}
                 </Text>
 
@@ -367,7 +384,9 @@ export default function ClienteScreen() {
                   </Text>
                 </View>
 
-                <Text style={styles.professionalService}>
+                <Text
+                  style={styles.professionalService}
+                >
                   {profissional.servico}
                 </Text>
 
@@ -458,12 +477,7 @@ export default function ClienteScreen() {
         <TouchableOpacity
           style={styles.navItem}
           activeOpacity={0.7}
-          onPress={() =>
-            Alert.alert(
-              'Perfil',
-              'A área de perfil do cliente será implementada em uma próxima etapa.'
-            )
-          }
+          onPress={abrirPerfil}
         >
           <Ionicons
             name="person-outline"
