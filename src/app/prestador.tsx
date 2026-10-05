@@ -3,7 +3,6 @@ import {
   router,
   useFocusEffect,
 } from 'expo-router';
-
 import {
   useCallback,
   useState,
@@ -132,10 +131,7 @@ export default function PrestadorScreen() {
   function textoStatus(
     status: Solicitacao['status']
   ) {
-    return status.replace(
-      '_',
-      ' '
-    );
+    return status.replace('_', ' ');
   }
 
   const pendentes =
@@ -608,6 +604,29 @@ export default function PrestadorScreen() {
                     </Text>
                   </View>
                 )}
+
+                {pedido.status ===
+                  'CANCELADA' && (
+                  <View
+                    style={
+                      styles.rejectedBox
+                    }
+                  >
+                    <Ionicons
+                      name="close-circle"
+                      size={20}
+                      color="#D63C3C"
+                    />
+
+                    <Text
+                      style={
+                        styles.rejectedText
+                      }
+                    >
+                      Solicitação cancelada
+                    </Text>
+                  </View>
+                )}
               </View>
             ))
           )}
@@ -652,10 +671,7 @@ export default function PrestadorScreen() {
         <TouchableOpacity
           style={styles.navItem}
           onPress={() =>
-            Alert.alert(
-              'Histórico',
-              'O histórico completo será implementado em uma próxima etapa.'
-            )
+            router.push('/historico')
           }
         >
           <Ionicons
