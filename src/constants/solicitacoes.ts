@@ -6,6 +6,12 @@ export type StatusSolicitacao =
   | 'CONCLUIDA'
   | 'CANCELADA';
 
+export type Avaliacao = {
+  nota: number;
+  comentario: string;
+  data: string;
+};
+
 export type Solicitacao = {
   id: string;
   profissional: string;
@@ -14,6 +20,7 @@ export type Solicitacao = {
   descricao: string;
   status: StatusSolicitacao;
   data: string;
+  avaliacao?: Avaliacao;
 };
 
 export const solicitacoes: Solicitacao[] = [];
@@ -47,4 +54,32 @@ export function buscarSolicitacaoPorId(
   return solicitacoes.find(
     (item) => item.id === id
   );
+}
+
+export function adicionarAvaliacao(
+  id: string,
+  nota: number,
+  comentario: string
+) {
+  const solicitacao = buscarSolicitacaoPorId(id);
+
+  if (!solicitacao) {
+    return false;
+  }
+
+  if (solicitacao.status !== 'CONCLUIDA') {
+    return false;
+  }
+
+  if (nota < 1 || nota > 5) {
+    return false;
+  }
+
+  solicitacao.avaliacao = {
+    nota,
+    comentario: comentario.trim(),
+    data: new Date().toLocaleDateString('pt-BR'),
+  };
+
+  return true;
 }

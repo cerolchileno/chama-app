@@ -77,6 +77,15 @@ export default function HistoricoScreen() {
     return 'close-circle';
   }
 
+  function abrirAvaliacao(id: string) {
+    router.push({
+      pathname: '/avaliar',
+      params: {
+        id,
+      },
+    });
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
@@ -192,10 +201,9 @@ export default function HistoricoScreen() {
                       style={[
                         styles.statusBadge,
                         {
-                          backgroundColor:
-                            `${corStatus(
-                              pedido.status
-                            )}15`,
+                          backgroundColor: `${corStatus(
+                            pedido.status
+                          )}15`,
                         },
                       ]}
                     >
@@ -262,21 +270,151 @@ export default function HistoricoScreen() {
                     </Text>
                   </View>
 
-                  {pedido.status === 'CONCLUIDA' && (
-                    <View style={styles.completedMessage}>
-                      <Ionicons
-                        name="checkmark-circle-outline"
-                        size={18}
-                        color="#1A9B63"
-                      />
+                  {pedido.status === 'CONCLUIDA' &&
+                    !pedido.avaliacao && (
+                      <>
+                        <View
+                          style={styles.completedMessage}
+                        >
+                          <Ionicons
+                            name="checkmark-circle-outline"
+                            size={18}
+                            color="#1A9B63"
+                          />
 
-                      <Text
-                        style={styles.completedMessageText}
+                          <Text
+                            style={
+                              styles.completedMessageText
+                            }
+                          >
+                            Serviço finalizado com sucesso
+                          </Text>
+                        </View>
+
+                        <TouchableOpacity
+                          style={styles.ratingButton}
+                          activeOpacity={0.8}
+                          onPress={() =>
+                            abrirAvaliacao(pedido.id)
+                          }
+                        >
+                          <Ionicons
+                            name="star"
+                            size={19}
+                            color="#FFFFFF"
+                          />
+
+                          <Text
+                            style={
+                              styles.ratingButtonText
+                            }
+                          >
+                            Avaliar atendimento
+                          </Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
+
+                  {pedido.status === 'CONCLUIDA' &&
+                    pedido.avaliacao && (
+                      <View
+                        style={styles.ratingResult}
                       >
-                        Serviço finalizado com sucesso
-                      </Text>
-                    </View>
-                  )}
+                        <View
+                          style={styles.ratingResultHeader}
+                        >
+                          <View>
+                            <Text
+                              style={
+                                styles.ratingResultLabel
+                              }
+                            >
+                              Sua avaliação
+                            </Text>
+
+                            <View
+                              style={
+                                styles.ratingResultStars
+                              }
+                            >
+                              {[1, 2, 3, 4, 5].map(
+                                (estrela) => (
+                                  <Ionicons
+                                    key={estrela}
+                                    name={
+                                      estrela <=
+                                      pedido.avaliacao!
+                                        .nota
+                                        ? 'star'
+                                        : 'star-outline'
+                                    }
+                                    size={18}
+                                    color="#FFB000"
+                                  />
+                                )
+                              )}
+                            </View>
+                          </View>
+
+                          <View
+                            style={styles.ratingScore}
+                          >
+                            <Text
+                              style={
+                                styles.ratingScoreText
+                              }
+                            >
+                              {
+                                pedido.avaliacao
+                                  .nota
+                              }
+                              /5
+                            </Text>
+                          </View>
+                        </View>
+
+                        {pedido.avaliacao.comentario ? (
+                          <Text
+                            style={
+                              styles.ratingComment
+                            }
+                          >
+                            “
+                            {
+                              pedido.avaliacao
+                                .comentario
+                            }
+                            ”
+                          </Text>
+                        ) : (
+                          <Text
+                            style={
+                              styles.noCommentText
+                            }
+                          >
+                            Avaliação realizada sem
+                            comentário.
+                          </Text>
+                        )}
+
+                        <View
+                          style={styles.ratingDateRow}
+                        >
+                          <Ionicons
+                            name="calendar-outline"
+                            size={14}
+                            color="#8A8A8A"
+                          />
+
+                          <Text
+                            style={styles.ratingDate}
+                          >
+                            Avaliado em{' '}
+                            {pedido.avaliacao.data}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
                 </View>
               ))}
             </View>
@@ -507,6 +645,89 @@ const styles = StyleSheet.create({
     color: '#1A9B63',
     fontSize: 11,
     fontWeight: '800',
+  },
+
+  ratingButton: {
+    height: 48,
+    backgroundColor: '#F04B2F',
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    marginTop: 10,
+  },
+
+  ratingButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+
+  ratingResult: {
+    backgroundColor: '#FFFAEC',
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: '#F6E4A8',
+    padding: 14,
+    marginTop: 13,
+  },
+
+  ratingResultHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+
+  ratingResultLabel: {
+    color: '#1F2328',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+
+  ratingResultStars: {
+    flexDirection: 'row',
+    gap: 2,
+    marginTop: 5,
+  },
+
+  ratingScore: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 9,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+  },
+
+  ratingScoreText: {
+    color: '#1F2328',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+
+  ratingComment: {
+    color: '#62666A',
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 12,
+  },
+
+  noCommentText: {
+    color: '#8A8A8A',
+    fontSize: 11,
+    fontStyle: 'italic',
+    marginTop: 12,
+  },
+
+  ratingDateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 10,
+  },
+
+  ratingDate: {
+    color: '#8A8A8A',
+    fontSize: 10,
   },
 
   empty: {
