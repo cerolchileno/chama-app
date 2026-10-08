@@ -105,41 +105,7 @@ export default function ClienteScreen() {
   }
 
   function abrirPerfil() {
-    Alert.alert(
-      'Perfil do cliente',
-      'O que você deseja fazer?',
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Sair da conta',
-          style: 'destructive',
-          onPress: () => confirmarSaida(),
-        },
-      ]
-    );
-  }
-
-  function confirmarSaida() {
-    Alert.alert(
-      'Sair da conta',
-      'Tem certeza que deseja sair da sua conta?',
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Sair',
-          style: 'destructive',
-          onPress: () => {
-            router.replace('/login');
-          },
-        },
-      ]
-    );
+    router.push('/perfil-cliente');
   }
 
   return (
