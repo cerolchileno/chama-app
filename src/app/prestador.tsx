@@ -1,16 +1,9 @@
-import { Ionicons } from '@expo/vector-icons';
-import {
-  router,
-  useFocusEffect,
-} from 'expo-router';
-import {
-  useCallback,
-  useState,
-} from 'react';
 
+import { Ionicons } from '@expo/vector-icons';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
   Alert,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -18,35 +11,39 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   alterarStatusSolicitacao,
-  Solicitacao,
   solicitacoes,
+  type Solicitacao,
 } from '@/constants/solicitacoes';
 
-export default function PrestadorScreen() {
-  const [pedidos, setPedidos] =
-    useState<Solicitacao[]>([]);
+const COR = '#F04B2F';
+const ESCURO = '#1F2328';
 
-  function carregarPedidos() {
+export default function PrestadorScreen() {
+  const [pedidos, setPedidos] = useState<Solicitacao[]>([]);
+
+  const carregarPedidos = useCallback(() => {
     setPedidos([...solicitacoes]);
-  }
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
       carregarPedidos();
-    }, [])
+    }, [carregarPedidos])
   );
 
   function aceitarPedido(id: string) {
-    alterarStatusSolicitacao(
-      id,
-      'ACEITA'
-    );
+    const sucesso = alterarStatusSolicitacao(id, 'ACEITA');
+
+    if (!sucesso) {
+      Alert.alert('Erro', 'Não foi possível aceitar a solicitação.');
+      return;
+    }
 
     carregarPedidos();
-
     Alert.alert(
       'Solicitação aceita',
       'O cliente poderá acompanhar a atualização pelo CHAMA.'
@@ -58,20 +55,21 @@ export default function PrestadorScreen() {
       'Recusar solicitação',
       'Deseja realmente recusar este serviço?',
       [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
+        { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Recusar',
           style: 'destructive',
           onPress: () => {
-            alterarStatusSolicitacao(
+            const sucesso = alterarStatusSolicitacao(
               id,
               'RECUSADA'
             );
 
-            carregarPedidos();
+            if (sucesso) {
+              carregarPedidos();
+            } else {
+              Alert.alert('Erro', 'Não foi possível recusar.');
+            }
           },
         },
       ]
@@ -79,13 +77,17 @@ export default function PrestadorScreen() {
   }
 
   function iniciarServico(id: string) {
-    alterarStatusSolicitacao(
+    const sucesso = alterarStatusSolicitacao(
       id,
       'EM_ANDAMENTO'
     );
 
-    carregarPedidos();
+    if (!sucesso) {
+      Alert.alert('Erro', 'Não foi possível iniciar o serviço.');
+      return;
+    }
 
+    carregarPedidos();
     Alert.alert(
       'Serviço iniciado',
       'O pedido agora está em andamento.'
@@ -93,94 +95,85 @@ export default function PrestadorScreen() {
   }
 
   function concluirServico(id: string) {
-    alterarStatusSolicitacao(
+    const sucesso = alterarStatusSolicitacao(
       id,
       'CONCLUIDA'
     );
 
-    carregarPedidos();
+    if (!sucesso) {
+      Alert.alert('Erro', 'Não foi possível concluir o serviço.');
+      return;
+    }
 
+    carregarPedidos();
     Alert.alert(
       'Serviço concluído',
       'O atendimento foi marcado como concluído.'
     );
   }
 
-  function corStatus(
-    status: Solicitacao['status']
-  ) {
+  function corStatus(status: Solicitacao['status']) {
     switch (status) {
       case 'ACEITA':
         return '#2878D0';
-
       case 'EM_ANDAMENTO':
         return '#D88400';
-
       case 'CONCLUIDA':
         return '#1A9B63';
-
       case 'RECUSADA':
       case 'CANCELADA':
         return '#D63C3C';
-
       default:
-        return '#F04B2F';
+        return COR;
     }
   }
 
-  function textoStatus(
-    status: Solicitacao['status']
-  ) {
-    return status.replace('_', ' ');
+  function textoStatus(status: Solicitacao['status']) {
+    const nomes: Record<Solicitacao['status'], string> = {
+      PENDENTE: 'Pendente',
+      ACEITA: 'Aceita',
+      RECUSADA: 'Recusada',
+      EM_ANDAMENTO: 'Em andamento',
+      CONCLUIDA: 'Concluída',
+      CANCELADA: 'Cancelada',
+    };
+
+    return nomes[status];
   }
 
-  const pendentes =
-    pedidos.filter(
-      (pedido) =>
-        pedido.status === 'PENDENTE'
-    ).length;
+  const pendentes = pedidos.filter(
+    (p) => p.status === 'PENDENTE'
+  ).length;
 
-  const ativos =
-    pedidos.filter(
-      (pedido) =>
-        pedido.status === 'ACEITA' ||
-        pedido.status === 'EM_ANDAMENTO'
-    ).length;
+  const ativos = pedidos.filter(
+    (p) =>
+      p.status === 'ACEITA' ||
+      p.status === 'EM_ANDAMENTO'
+  ).length;
 
-  const concluidos =
-    pedidos.filter(
-      (pedido) =>
-        pedido.status === 'CONCLUIDA'
-    ).length;
+  const concluidos = pedidos.filter(
+    (p) => p.status === 'CONCLUIDA'
+  ).length;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="light-content" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={
-          styles.scrollContent
-        }
+        contentContainerStyle={styles.scrollContent}
       >
-        {/* CABEÇALHO */}
-
         <View style={styles.header}>
           <View style={styles.headerTop}>
             <View>
-              <Text style={styles.brand}>
-                CHAMA
-              </Text>
-
+              <Text style={styles.brand}>CHAMA</Text>
               <Text style={styles.mode}>
                 Área do profissional
               </Text>
             </View>
 
             <TouchableOpacity
-              style={
-                styles.notificationButton
-              }
+              style={styles.notificationButton}
               onPress={() =>
                 Alert.alert(
                   'Notificações',
@@ -197,16 +190,8 @@ export default function PrestadorScreen() {
               />
 
               {pendentes > 0 && (
-                <View
-                  style={
-                    styles.notificationBadge
-                  }
-                >
-                  <Text
-                    style={
-                      styles.notificationNumber
-                    }
-                  >
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.notificationNumber}>
                     {pendentes}
                   </Text>
                 </View>
@@ -217,122 +202,85 @@ export default function PrestadorScreen() {
           <Text style={styles.greeting}>
             Olá, profissional!
           </Text>
-
           <Text style={styles.headerDescription}>
-            Acompanhe suas solicitações e
-            atendimentos.
+            Acompanhe suas solicitações e atendimentos.
           </Text>
         </View>
 
-        {/* RESUMO */}
-
         <View style={styles.summary}>
           <View style={styles.summaryCard}>
-            <View
-              style={styles.summaryIcon}
-            >
+            <View style={styles.summaryIcon}>
               <Ionicons
                 name="time-outline"
                 size={24}
-                color="#F04B2F"
+                color={COR}
               />
             </View>
-
             <Text style={styles.summaryNumber}>
               {pendentes}
             </Text>
-
             <Text style={styles.summaryLabel}>
               Pendentes
             </Text>
           </View>
 
           <View style={styles.summaryCard}>
-            <View
-              style={styles.summaryIcon}
-            >
+            <View style={styles.summaryIcon}>
               <Ionicons
                 name="construct-outline"
                 size={24}
-                color="#F04B2F"
+                color={COR}
               />
             </View>
-
             <Text style={styles.summaryNumber}>
               {ativos}
             </Text>
-
             <Text style={styles.summaryLabel}>
               Em atendimento
             </Text>
           </View>
 
           <View style={styles.summaryCard}>
-            <View
-              style={styles.summaryIcon}
-            >
+            <View style={styles.summaryIcon}>
               <Ionicons
                 name="checkmark-circle-outline"
                 size={24}
-                color="#F04B2F"
+                color={COR}
               />
             </View>
-
             <Text style={styles.summaryNumber}>
               {concluidos}
             </Text>
-
             <Text style={styles.summaryLabel}>
               Concluídos
             </Text>
           </View>
         </View>
 
-        {/* SOLICITAÇÕES */}
-
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View>
-              <Text style={styles.sectionTitle}>
-                Solicitações
-              </Text>
-
-              <Text
-                style={
-                  styles.sectionDescription
-                }
-              >
-                Serviços enviados para você
-              </Text>
-            </View>
-          </View>
+          <Text style={styles.sectionTitle}>
+            Solicitações
+          </Text>
+          <Text style={styles.sectionDescription}>
+            Serviços enviados para você
+          </Text>
 
           {pedidos.length === 0 ? (
             <View style={styles.empty}>
-              <View
-                style={styles.emptyIcon}
-              >
+              <View style={styles.emptyIcon}>
                 <Ionicons
                   name="briefcase-outline"
                   size={40}
-                  color="#F04B2F"
+                  color={COR}
                 />
               </View>
 
-              <Text
-                style={styles.emptyTitle}
-              >
+              <Text style={styles.emptyTitle}>
                 Nenhuma solicitação
               </Text>
-
-              <Text
-                style={
-                  styles.emptyDescription
-                }
-              >
-                Quando um cliente solicitar
-                seus serviços, o pedido
-                aparecerá aqui.
+              <Text style={styles.emptyDescription}>
+                Quando um cliente solicitar seus serviços,
+                o pedido aparecerá aqui.
               </Text>
             </View>
           ) : (
@@ -341,43 +289,21 @@ export default function PrestadorScreen() {
                 key={pedido.id}
                 style={styles.requestCard}
               >
-                <View
-                  style={
-                    styles.requestHeader
-                  }
-                >
-                  <View
-                    style={
-                      styles.serviceIcon
-                    }
-                  >
+                <View style={styles.requestHeader}>
+                  <View style={styles.serviceIcon}>
                     <Ionicons
                       name="construct-outline"
                       size={26}
-                      color="#F04B2F"
+                      color={COR}
                     />
                   </View>
 
-                  <View
-                    style={
-                      styles.requestInfo
-                    }
-                  >
-                    <Text
-                      style={
-                        styles.serviceName
-                      }
-                    >
+                  <View style={styles.requestInfo}>
+                    <Text style={styles.serviceName}>
                       {pedido.servico}
                     </Text>
-
-                    <Text
-                      style={
-                        styles.requestDate
-                      }
-                    >
-                      Solicitado em{' '}
-                      {pedido.data}
+                    <Text style={styles.requestDate}>
+                      Solicitado em {pedido.data}
                     </Text>
                   </View>
 
@@ -386,79 +312,47 @@ export default function PrestadorScreen() {
                       styles.statusBadge,
                       {
                         backgroundColor:
-                          `${corStatus(
-                            pedido.status
-                          )}15`,
+                          `${corStatus(pedido.status)}15`,
                       },
                     ]}
                   >
                     <Text
                       style={[
                         styles.statusText,
-                        {
-                          color:
-                            corStatus(
-                              pedido.status
-                            ),
-                        },
+                        { color: corStatus(pedido.status) },
                       ]}
                     >
-                      {textoStatus(
-                        pedido.status
-                      )}
+                      {textoStatus(pedido.status)}
                     </Text>
                   </View>
                 </View>
 
-                <View
-                  style={styles.divider}
-                />
+                <View style={styles.divider} />
 
-                <View
-                  style={styles.detailRow}
-                >
+                <View style={styles.detailRow}>
                   <Ionicons
                     name="location-outline"
                     size={18}
-                    color="#777"
+                    color="#777777"
                   />
-
-                  <Text
-                    style={styles.detailText}
-                  >
+                  <Text style={styles.detailText}>
                     {pedido.endereco}
                   </Text>
                 </View>
 
-                <Text
-                  style={
-                    styles.descriptionLabel
-                  }
-                >
+                <Text style={styles.descriptionLabel}>
                   Descrição do serviço
                 </Text>
-
-                <Text
-                  style={styles.description}
-                >
+                <Text style={styles.description}>
                   {pedido.descricao}
                 </Text>
 
-                {pedido.status ===
-                  'PENDENTE' && (
-                  <View
-                    style={
-                      styles.actionsRow
-                    }
-                  >
+                {pedido.status === 'PENDENTE' && (
+                  <View style={styles.actionsRow}>
                     <TouchableOpacity
-                      style={
-                        styles.rejectButton
-                      }
+                      style={styles.rejectButton}
                       onPress={() =>
-                        recusarPedido(
-                          pedido.id
-                        )
+                        recusarPedido(pedido.id)
                       }
                     >
                       <Ionicons
@@ -466,24 +360,15 @@ export default function PrestadorScreen() {
                         size={20}
                         color="#D63C3C"
                       />
-
-                      <Text
-                        style={
-                          styles.rejectText
-                        }
-                      >
+                      <Text style={styles.rejectText}>
                         Recusar
                       </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={
-                        styles.acceptButton
-                      }
+                      style={styles.acceptButton}
                       onPress={() =>
-                        aceitarPedido(
-                          pedido.id
-                        )
+                        aceitarPedido(pedido.id)
                       }
                     >
                       <Ionicons
@@ -491,28 +376,18 @@ export default function PrestadorScreen() {
                         size={20}
                         color="#FFFFFF"
                       />
-
-                      <Text
-                        style={
-                          styles.acceptText
-                        }
-                      >
+                      <Text style={styles.acceptText}>
                         Aceitar
                       </Text>
                     </TouchableOpacity>
                   </View>
                 )}
 
-                {pedido.status ===
-                  'ACEITA' && (
+                {pedido.status === 'ACEITA' && (
                   <TouchableOpacity
-                    style={
-                      styles.primaryButton
-                    }
+                    style={styles.primaryButton}
                     onPress={() =>
-                      iniciarServico(
-                        pedido.id
-                      )
+                      iniciarServico(pedido.id)
                     }
                   >
                     <Ionicons
@@ -520,27 +395,17 @@ export default function PrestadorScreen() {
                       size={20}
                       color="#FFFFFF"
                     />
-
-                    <Text
-                      style={
-                        styles.primaryButtonText
-                      }
-                    >
+                    <Text style={styles.primaryButtonText}>
                       Iniciar serviço
                     </Text>
                   </TouchableOpacity>
                 )}
 
-                {pedido.status ===
-                  'EM_ANDAMENTO' && (
+                {pedido.status === 'EM_ANDAMENTO' && (
                   <TouchableOpacity
-                    style={
-                      styles.completeButton
-                    }
+                    style={styles.completeButton}
                     onPress={() =>
-                      concluirServico(
-                        pedido.id
-                      )
+                      concluirServico(pedido.id)
                     }
                   >
                     <Ionicons
@@ -548,82 +413,37 @@ export default function PrestadorScreen() {
                       size={20}
                       color="#FFFFFF"
                     />
-
-                    <Text
-                      style={
-                        styles.primaryButtonText
-                      }
-                    >
+                    <Text style={styles.primaryButtonText}>
                       Concluir serviço
                     </Text>
                   </TouchableOpacity>
                 )}
 
-                {pedido.status ===
-                  'CONCLUIDA' && (
-                  <View
-                    style={
-                      styles.completedBox
-                    }
-                  >
+                {pedido.status === 'CONCLUIDA' && (
+                  <View style={styles.completedBox}>
                     <Ionicons
                       name="checkmark-circle"
                       size={20}
                       color="#1A9B63"
                     />
-
-                    <Text
-                      style={
-                        styles.completedText
-                      }
-                    >
+                    <Text style={styles.completedText}>
                       Atendimento concluído
                     </Text>
                   </View>
                 )}
 
-                {pedido.status ===
-                  'RECUSADA' && (
-                  <View
-                    style={
-                      styles.rejectedBox
-                    }
-                  >
+                {(pedido.status === 'RECUSADA' ||
+                  pedido.status === 'CANCELADA') && (
+                  <View style={styles.rejectedBox}>
                     <Ionicons
                       name="close-circle"
                       size={20}
                       color="#D63C3C"
                     />
-
-                    <Text
-                      style={
-                        styles.rejectedText
-                      }
-                    >
-                      Solicitação recusada
-                    </Text>
-                  </View>
-                )}
-
-                {pedido.status ===
-                  'CANCELADA' && (
-                  <View
-                    style={
-                      styles.rejectedBox
-                    }
-                  >
-                    <Ionicons
-                      name="close-circle"
-                      size={20}
-                      color="#D63C3C"
-                    />
-
-                    <Text
-                      style={
-                        styles.rejectedText
-                      }
-                    >
-                      Solicitação cancelada
+                    <Text style={styles.rejectedText}>
+                      {pedido.status === 'RECUSADA'
+                        ? 'Solicitação recusada'
+                        : 'Solicitação cancelada'}
                     </Text>
                   </View>
                 )}
@@ -632,37 +452,35 @@ export default function PrestadorScreen() {
           )}
         </View>
 
-        <View style={styles.bottomSpace} />
+        <View style={{ height: 20 }} />
       </ScrollView>
 
-      {/* MENU */}
-
       <View style={styles.bottomNavigation}>
-        <TouchableOpacity
-          style={styles.navItem}
-        >
+        <TouchableOpacity style={styles.navItem}>
           <Ionicons
             name="home"
             size={23}
-            color="#F04B2F"
+            color={COR}
           />
-
-          <Text
-            style={styles.navTextActive}
-          >
+          <Text style={styles.navTextActive}>
             Início
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.navItem}
+          onPress={() =>
+            Alert.alert(
+              'Meus serviços',
+              'O gerenciamento dos serviços oferecidos será implementado em uma próxima etapa.'
+            )
+          }
         >
           <Ionicons
             name="briefcase-outline"
             size={23}
             color="#737373"
           />
-
           <Text style={styles.navText}>
             Serviços
           </Text>
@@ -670,16 +488,13 @@ export default function PrestadorScreen() {
 
         <TouchableOpacity
           style={styles.navItem}
-          onPress={() =>
-            router.push('/historico')
-          }
+          onPress={() => router.push('/historico')}
         >
           <Ionicons
             name="time-outline"
             size={23}
             color="#737373"
           />
-
           <Text style={styles.navText}>
             Histórico
           </Text>
@@ -688,10 +503,7 @@ export default function PrestadorScreen() {
         <TouchableOpacity
           style={styles.navItem}
           onPress={() =>
-            Alert.alert(
-              'Perfil',
-              'O perfil do profissional será implementado em uma próxima etapa.'
-            )
+            router.push('/perfil-prestador')
           }
         >
           <Ionicons
@@ -699,7 +511,6 @@ export default function PrestadorScreen() {
             size={23}
             color="#737373"
           />
-
           <Text style={styles.navText}>
             Perfil
           </Text>
@@ -714,50 +525,42 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F7F7F7',
   },
-
   scrollContent: {
     paddingBottom: 100,
   },
-
   header: {
-    backgroundColor: '#1F2328',
+    backgroundColor: ESCURO,
     paddingHorizontal: 22,
     paddingTop: 20,
     paddingBottom: 30,
     borderBottomLeftRadius: 27,
     borderBottomRightRadius: 27,
   },
-
   headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 25,
   },
-
   brand: {
-    color: '#F04B2F',
+    color: COR,
     fontSize: 21,
     fontWeight: '900',
     letterSpacing: 2,
   },
-
   mode: {
     color: '#BFC3C7',
     fontSize: 11,
     marginTop: 3,
   },
-
   notificationButton: {
     width: 43,
     height: 43,
     borderRadius: 22,
-    backgroundColor:
-      'rgba(255,255,255,0.10)',
+    backgroundColor: 'rgba(255,255,255,0.10)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   notificationBadge: {
     position: 'absolute',
     top: -3,
@@ -765,37 +568,32 @@ const styles = StyleSheet.create({
     minWidth: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: '#F04B2F',
+    backgroundColor: COR,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
   },
-
   notificationNumber: {
     color: '#FFFFFF',
     fontSize: 9,
     fontWeight: '900',
   },
-
   greeting: {
     color: '#FFFFFF',
     fontSize: 28,
     fontWeight: '900',
   },
-
   headerDescription: {
     color: '#C9CDD0',
     fontSize: 14,
     marginTop: 6,
   },
-
   summary: {
     flexDirection: 'row',
     paddingHorizontal: 15,
     marginTop: 20,
     gap: 8,
   },
-
   summaryCard: {
     flex: 1,
     backgroundColor: '#FFFFFF',
@@ -805,7 +603,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ECECEC',
   },
-
   summaryIcon: {
     width: 40,
     height: 40,
@@ -814,42 +611,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   summaryNumber: {
-    color: '#1F2328',
+    color: ESCURO,
     fontSize: 21,
     fontWeight: '900',
     marginTop: 7,
   },
-
   summaryLabel: {
-    color: '#777',
+    color: '#777777',
     fontSize: 10,
     marginTop: 2,
     textAlign: 'center',
   },
-
   section: {
     paddingHorizontal: 20,
     paddingTop: 27,
   },
-
-  sectionHeader: {
-    marginBottom: 17,
-  },
-
   sectionTitle: {
-    color: '#1F2328',
+    color: ESCURO,
     fontSize: 21,
     fontWeight: '900',
   },
-
   sectionDescription: {
-    color: '#777',
+    color: '#777777',
     fontSize: 12,
     marginTop: 3,
+    marginBottom: 17,
   },
-
   empty: {
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
@@ -858,7 +646,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ECECEC',
   },
-
   emptyIcon: {
     width: 75,
     height: 75,
@@ -867,22 +654,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   emptyTitle: {
-    color: '#1F2328',
+    color: ESCURO,
     fontSize: 18,
     fontWeight: '800',
     marginTop: 17,
   },
-
   emptyDescription: {
-    color: '#777',
+    color: '#777777',
     fontSize: 13,
     lineHeight: 19,
     textAlign: 'center',
     marginTop: 6,
   },
-
   requestCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
@@ -891,12 +675,10 @@ const styles = StyleSheet.create({
     borderColor: '#EAEAEA',
     marginBottom: 15,
   },
-
   requestHeader: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-
   serviceIcon: {
     width: 50,
     height: 50,
@@ -906,72 +688,60 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 11,
   },
-
   requestInfo: {
     flex: 1,
   },
-
   serviceName: {
-    color: '#1F2328',
+    color: ESCURO,
     fontSize: 15,
     fontWeight: '800',
   },
-
   requestDate: {
-    color: '#888',
+    color: '#888888',
     fontSize: 11,
     marginTop: 4,
   },
-
   statusBadge: {
     borderRadius: 9,
     paddingHorizontal: 8,
     paddingVertical: 6,
   },
-
   statusText: {
     fontSize: 9,
     fontWeight: '900',
   },
-
   divider: {
     height: 1,
     backgroundColor: '#EEEEEE',
     marginVertical: 14,
   },
-
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 7,
   },
-
   detailText: {
     flex: 1,
     color: '#62666A',
     fontSize: 12,
   },
-
   descriptionLabel: {
-    color: '#1F2328',
+    color: ESCURO,
     fontSize: 12,
     fontWeight: '800',
     marginTop: 15,
   },
-
   description: {
     color: '#62666A',
     fontSize: 13,
     lineHeight: 19,
     marginTop: 5,
   },
-
   actionsRow: {
     flexDirection: 'row',
     gap: 9,
     marginTop: 18,
   },
-
   rejectButton: {
     flex: 1,
     height: 48,
@@ -984,30 +754,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 5,
   },
-
   rejectText: {
     color: '#D63C3C',
     fontWeight: '800',
     fontSize: 13,
   },
-
   acceptButton: {
     flex: 1,
     height: 48,
     borderRadius: 13,
-    backgroundColor: '#F04B2F',
+    backgroundColor: COR,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
   },
-
   acceptText: {
     color: '#FFFFFF',
     fontWeight: '800',
     fontSize: 13,
   },
-
   primaryButton: {
     height: 49,
     borderRadius: 13,
@@ -1018,7 +784,6 @@ const styles = StyleSheet.create({
     gap: 7,
     marginTop: 18,
   },
-
   completeButton: {
     height: 49,
     borderRadius: 13,
@@ -1029,13 +794,11 @@ const styles = StyleSheet.create({
     gap: 7,
     marginTop: 18,
   },
-
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '800',
   },
-
   completedBox: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1046,13 +809,11 @@ const styles = StyleSheet.create({
     padding: 12,
     marginTop: 17,
   },
-
   completedText: {
     color: '#1A9B63',
     fontSize: 12,
     fontWeight: '800',
   },
-
   rejectedBox: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1063,13 +824,11 @@ const styles = StyleSheet.create({
     padding: 12,
     marginTop: 17,
   },
-
   rejectedText: {
     color: '#D63C3C',
     fontSize: 12,
     fontWeight: '800',
   },
-
   bottomNavigation: {
     position: 'absolute',
     bottom: 0,
@@ -1084,26 +843,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: 7,
   },
-
   navItem: {
     minWidth: 60,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 3,
   },
-
   navText: {
     color: '#737373',
     fontSize: 10,
   },
-
   navTextActive: {
-    color: '#F04B2F',
+    color: COR,
     fontSize: 10,
     fontWeight: '700',
-  },
-
-  bottomSpace: {
-    height: 20,
   },
 });
