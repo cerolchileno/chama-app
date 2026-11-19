@@ -1,13 +1,13 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export type StatusSolicitacao =
-  | 'PENDENTE'
-  | 'ACEITA'
-  | 'RECUSADA'
-  | 'EM_ANDAMENTO'
-  | 'CONCLUIDA'
-  | 'CANCELADA';
+import {
+  podeAlterarStatusSolicitacao,
+  type StatusSolicitacao,
+} from './regrasSolicitacao';
+
+export type { StatusSolicitacao } from './regrasSolicitacao';
+export { podeAlterarStatusSolicitacao } from './regrasSolicitacao';
 
 export type Avaliacao = {
   nota: number;
@@ -34,7 +34,7 @@ let inicializado = false;
 let carregamentoPendente: Promise<void> | null = null;
 let filaGravacao: Promise<void> = Promise.resolve();
 
-function salvarSolicitacoes() {
+function salvarSolicitacoes(): Promise<void> {
   const dados = JSON.stringify(solicitacoes);
 
   filaGravacao = filaGravacao
@@ -60,7 +60,6 @@ export function carregarSolicitacoes(): Promise<void> {
   }
 
   carregamentoPendente = (async () => {
-    // Aguarda gravações anteriores, caso existam.
     await filaGravacao;
 
     const dados = await AsyncStorage.getItem(STORAGE_KEY);
@@ -89,7 +88,7 @@ export function carregarSolicitacoes(): Promise<void> {
 
 export function adicionarSolicitacao(
   solicitacao: Solicitacao
-) {
+): void {
   solicitacoes.unshift(solicitacao);
   void salvarSolicitacoes();
 }
@@ -97,12 +96,21 @@ export function adicionarSolicitacao(
 export function alterarStatusSolicitacao(
   id: string,
   novoStatus: StatusSolicitacao
-) {
+): boolean {
   const solicitacao = solicitacoes.find(
     (item) => item.id === id
   );
 
   if (!solicitacao) {
+    return false;
+  }
+
+  if (
+    !podeAlterarStatusSolicitacao(
+      solicitacao.status,
+      novoStatus
+    )
+  ) {
     return false;
   }
 
@@ -112,7 +120,9 @@ export function alterarStatusSolicitacao(
   return true;
 }
 
-export function buscarSolicitacaoPorId(id: string) {
+export function buscarSolicitacaoPorId(
+  id: string
+): Solicitacao | undefined {
   return solicitacoes.find(
     (item) => item.id === id
   );
@@ -122,7 +132,7 @@ export function adicionarAvaliacao(
   id: string,
   nota: number,
   comentario: string
-) {
+): boolean {
   const solicitacao = buscarSolicitacaoPorId(id);
 
   if (!solicitacao) {
@@ -133,7 +143,11 @@ export function adicionarAvaliacao(
     return false;
   }
 
-  if (!Number.isFinite(nota) || nota < 1 || nota > 5) {
+  if (
+    !Number.isFinite(nota) ||
+    nota < 1 ||
+    nota > 5
+  ) {
     return false;
   }
 
