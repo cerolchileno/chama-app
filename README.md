@@ -1,56 +1,98 @@
-# Welcome to your Expo app 👋
+# CHAMA — Marketplace de serviços
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+O **CHAMA** é um aplicativo em desenvolvimento para conectar clientes a profissionais prestadores de serviços. Este repositório reúne a implementação do projeto acadêmico, utilizado também como MVP da atividade P2 e planejado para evolução no TCC.
 
-## Get started
+> **Estado atual:** protótipo funcional com persistência local. Ainda não é uma plataforma de produção: não possui autenticação real, backend compartilhado nem sincronização entre dispositivos.
 
-1. Install dependencies
+## Tecnologias
 
-   ```bash
-   npm install
-   ```
+- **React Native** com **Expo SDK 57** e **Expo Router**;
+- **TypeScript**;
+- **AsyncStorage** para persistência local;
+- **Vitest** para testes automatizados;
+- **Git e GitHub** para versionamento e revisão de alterações.
 
-2. Start the app
+## Funcionalidades implementadas no MVP
 
-   ```bash
-   npx expo start
-   ```
+### Cliente
+- Navegação pelo catálogo de serviços e profissionais demonstrativos.
+- Visualização de profissionais e seus serviços.
+- Criação de solicitações de atendimento, com dados do serviço, descrição e endereço.
+- Acompanhamento de solicitações ativas e histórico de atendimentos encerrados.
+- Avaliação de serviços concluídos.
 
-In the output, you'll find options to open the app in a
+### Prestador
+- Gerenciamento de serviços anunciados, com persistência local.
+- Recebimento de solicitações vinculadas ao prestador demonstrativo.
+- Atualização do status das solicitações conforme as transições permitidas.
+- Histórico de atendimentos próprios e visualização de avaliações recebidas.
+- Indicadores de solicitações e avaliações limitados ao prestador demonstrativo.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+### Qualidade e regras
+- Validação de dados e transições de status.
+- Proteção contra alteração de solicitações de outros prestadores no fluxo demonstrativo.
+- Testes automatizados de regras, persistência, serviços e filtragem.
+- Histórico de desenvolvimento organizado por branches, commits e pull requests.
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## Como executar
 
-## Get a fresh project
+### Pré-requisitos
 
-When you're ready, run:
+- Node.js e npm instalados;
+- Ambiente compatível com o Expo para testar no celular, emulador ou navegador.
+
+No terminal, a partir da raiz do repositório:
 
 ```bash
-npm run reset-project
+npm install
+npx expo start -c
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Siga as opções exibidas pelo Expo para abrir o aplicativo no ambiente de testes disponível.
 
-### Other setup steps
+### Verificações
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+```bash
+npx tsc --noEmit
+npx vitest run
+```
 
-## Learn more
+O primeiro comando verifica os tipos TypeScript. O segundo executa os testes automatizados.
 
-To learn more about developing your project with Expo, look at the following resources:
+## Fluxo sugerido de demonstração da P2
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+1. Apresentar o objetivo do CHAMA e a navegação inicial.
+2. Entrar no fluxo do prestador demonstrativo e apresentar seus serviços.
+3. No fluxo do cliente, escolher um serviço e criar uma solicitação para esse prestador.
+4. Retornar à área do prestador, localizar o pedido e alterar seu status.
+5. Mostrar a atualização do pedido na área do cliente.
+6. Concluir o atendimento, abrir o histórico e demonstrar a avaliação.
+7. Exibir os indicadores do prestador e comentar os testes automatizados.
 
-## Join the community
+**Importante:** os dados são armazenados no próprio dispositivo. Para demonstrar o fluxo completo, utilize a mesma instalação do aplicativo.
 
-Join our community of developers creating universal apps.
+## Limitações atuais
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- **Login e cadastro:** fluxos demonstrativos, sem autenticação ou contas reais.
+- **Persistência:** dados locais via AsyncStorage, sem compartilhamento entre dispositivos.
+- **Identidade do usuário:** ainda não existe sessão autenticada para isolar os dados de múltiplos clientes reais.
+- **Integração de CEP:** em desenvolvimento pela equipe; verificar a disponibilidade antes de demonstrar.
+- **Serviços e profissionais:** parte dos dados é demonstrativa.
+- **Pagamentos, notificações e infraestrutura de produção:** não implementados neste MVP.
+
+## Próximas etapas do TCC
+
+- Implementar backend e banco de dados com persistência centralizada.
+- Adicionar autenticação e autorização reais para clientes e prestadores.
+- Vincular solicitações ao cliente autenticado e ao prestador correspondente.
+- Integrar e validar serviços externos, incluindo consulta de CEP.
+- Evoluir segurança, testes, experiência do usuário e identidade visual da marca.
+- Preparar implantação, documentação técnica e avaliação do sistema.
+
+## Organização do trabalho
+
+As alterações são desenvolvidas em branches específicas, revisadas por pull requests e integradas à `main` após validação. A documentação distingue as funcionalidades existentes das previstas para evitar apresentar recursos futuros como já implementados.
+
+---
+
+**CHAMA — conectando pessoas a serviços.**
