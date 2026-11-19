@@ -1,7 +1,7 @@
+
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-
 import {
   Alert,
   KeyboardAvoidingView,
@@ -23,17 +23,37 @@ export default function LoginScreen() {
 
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [erroEmail, setErroEmail] = useState('');
+  const [erroSenha, setErroSenha] = useState('');
 
   function entrar() {
-    if (!email.trim() || !senha.trim()) {
-      Alert.alert(
-        'Preencha os dados',
-        'Informe seu e-mail e sua senha para continuar.'
-      );
+    const emailLimpo = email.trim();
+    let formularioValido = true;
 
+    setErroEmail('');
+    setErroSenha('');
+
+    if (!emailLimpo) {
+      setErroEmail('Informe seu e-mail.');
+      formularioValido = false;
+    } else if (
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailLimpo)
+    ) {
+      setErroEmail('Informe um e-mail válido.');
+      formularioValido = false;
+    }
+
+    if (!senha.trim()) {
+      setErroSenha('Informe sua senha.');
+      formularioValido = false;
+    }
+
+    if (!formularioValido) {
       return;
     }
 
+    // Acesso demonstrativo do MVP.
+    // Não existe autenticação real nesta etapa.
     if (tipoUsuario === 'CLIENTE') {
       router.replace('/cliente');
       return;
@@ -46,23 +66,18 @@ export default function LoginScreen() {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={
-          Platform.OS === 'ios'
-            ? 'padding'
-            : undefined
-        }
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* VOLTAR */}
-
           <TouchableOpacity
             style={styles.backButton}
             activeOpacity={0.7}
             onPress={() => router.back()}
+            accessibilityLabel="Voltar"
           >
             <Ionicons
               name="arrow-back"
@@ -71,25 +86,17 @@ export default function LoginScreen() {
             />
           </TouchableOpacity>
 
-          {/* MARCA */}
-
           <View style={styles.brandContainer}>
             <View style={styles.logo}>
-              <Text style={styles.logoText}>
-                C
-              </Text>
+              <Text style={styles.logoText}>C</Text>
             </View>
 
-            <Text style={styles.brand}>
-              CHAMA
-            </Text>
+            <Text style={styles.brand}>CHAMA</Text>
 
             <Text style={styles.slogan}>
               Precisa de um serviço? CHAMA.
             </Text>
           </View>
-
-          {/* LOGIN */}
 
           <View style={styles.form}>
             <Text style={styles.title}>
@@ -97,11 +104,8 @@ export default function LoginScreen() {
             </Text>
 
             <Text style={styles.subtitle}>
-              Escolha como deseja acessar sua
-              conta.
+              Escolha como deseja acessar sua conta.
             </Text>
-
-            {/* TIPO DE USUÁRIO */}
 
             <Text style={styles.label}>
               Tipo de acesso
@@ -115,9 +119,7 @@ export default function LoginScreen() {
                     styles.typeCardActive,
                 ]}
                 activeOpacity={0.8}
-                onPress={() =>
-                  setTipoUsuario('CLIENTE')
-                }
+                onPress={() => setTipoUsuario('CLIENTE')}
               >
                 <View
                   style={[
@@ -169,15 +171,12 @@ export default function LoginScreen() {
                     styles.typeCardActive,
                 ]}
                 activeOpacity={0.8}
-                onPress={() =>
-                  setTipoUsuario('PRESTADOR')
-                }
+                onPress={() => setTipoUsuario('PRESTADOR')}
               >
                 <View
                   style={[
                     styles.typeIcon,
-                    tipoUsuario ===
-                      'PRESTADOR' &&
+                    tipoUsuario === 'PRESTADOR' &&
                       styles.typeIconActive,
                   ]}
                 >
@@ -185,8 +184,7 @@ export default function LoginScreen() {
                     name="construct-outline"
                     size={25}
                     color={
-                      tipoUsuario ===
-                      'PRESTADOR'
+                      tipoUsuario === 'PRESTADOR'
                         ? '#FFFFFF'
                         : '#F04B2F'
                     }
@@ -196,8 +194,7 @@ export default function LoginScreen() {
                 <Text
                   style={[
                     styles.typeTitle,
-                    tipoUsuario ===
-                      'PRESTADOR' &&
+                    tipoUsuario === 'PRESTADOR' &&
                       styles.typeTitleActive,
                   ]}
                 >
@@ -208,8 +205,7 @@ export default function LoginScreen() {
                   Quero trabalhar
                 </Text>
 
-                {tipoUsuario ===
-                  'PRESTADOR' && (
+                {tipoUsuario === 'PRESTADOR' && (
                   <View style={styles.selected}>
                     <Ionicons
                       name="checkmark"
@@ -221,13 +217,14 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* EMAIL */}
+            <Text style={styles.label}>E-mail</Text>
 
-            <Text style={styles.label}>
-              E-mail
-            </Text>
-
-            <View style={styles.inputContainer}>
+            <View
+              style={[
+                styles.inputContainer,
+                !!erroEmail && styles.inputError,
+              ]}
+            >
               <Ionicons
                 name="mail-outline"
                 size={20}
@@ -239,20 +236,31 @@ export default function LoginScreen() {
                 placeholder="Digite seu e-mail"
                 placeholderTextColor="#999999"
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(valor) => {
+                  setEmail(valor);
+                  setErroEmail('');
+                }}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
+                autoComplete="email"
               />
             </View>
 
-            {/* SENHA */}
+            {!!erroEmail && (
+              <Text style={styles.errorText}>
+                {erroEmail}
+              </Text>
+            )}
 
-            <Text style={styles.label}>
-              Senha
-            </Text>
+            <Text style={styles.label}>Senha</Text>
 
-            <View style={styles.inputContainer}>
+            <View
+              style={[
+                styles.inputContainer,
+                !!erroSenha && styles.inputError,
+              ]}
+            >
               <Ionicons
                 name="lock-closed-outline"
                 size={20}
@@ -264,10 +272,22 @@ export default function LoginScreen() {
                 placeholder="Digite sua senha"
                 placeholderTextColor="#999999"
                 value={senha}
-                onChangeText={setSenha}
+                onChangeText={(valor) => {
+                  setSenha(valor);
+                  setErroSenha('');
+                }}
                 secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="current-password"
               />
             </View>
+
+            {!!erroSenha && (
+              <Text style={styles.errorText}>
+                {erroSenha}
+              </Text>
+            )}
 
             <TouchableOpacity
               style={styles.forgotButton}
@@ -282,8 +302,6 @@ export default function LoginScreen() {
                 Esqueci minha senha
               </Text>
             </TouchableOpacity>
-
-            {/* ENTRAR */}
 
             <TouchableOpacity
               style={styles.loginButton}
@@ -306,15 +324,9 @@ export default function LoginScreen() {
 
             <View style={styles.dividerContainer}>
               <View style={styles.divider} />
-
-              <Text style={styles.dividerText}>
-                ou
-              </Text>
-
+              <Text style={styles.dividerText}>ou</Text>
               <View style={styles.divider} />
             </View>
-
-            {/* CADASTRO */}
 
             <View style={styles.registerContainer}>
               <Text style={styles.registerText}>
@@ -322,17 +334,13 @@ export default function LoginScreen() {
               </Text>
 
               <TouchableOpacity
-                onPress={() =>
-                  router.push('/cadastro')
-                }
+                onPress={() => router.push('/cadastro')}
               >
                 <Text style={styles.registerLink}>
                   Criar conta
                 </Text>
               </TouchableOpacity>
             </View>
-
-            {/* AVISO MVP */}
 
             <View style={styles.developmentNotice}>
               <Ionicons
@@ -341,15 +349,11 @@ export default function LoginScreen() {
                 color="#F04B2F"
               />
 
-              <Text
-                style={
-                  styles.developmentNoticeText
-                }
-              >
+              <Text style={styles.developmentNoticeText}>
                 Durante o desenvolvimento do MVP,
-                qualquer e-mail e senha preenchidos
+                qualquer e-mail válido e senha preenchida
                 podem ser usados para testar os dois
-                tipos de acesso.
+                tipos de acesso. Não há autenticação real.
               </Text>
             </View>
           </View>
@@ -526,6 +530,17 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#1F2328',
     fontSize: 14,
+  },
+
+  inputError: {
+    borderColor: '#DC2626',
+    backgroundColor: '#FFF7F7',
+  },
+
+  errorText: {
+    color: '#DC2626',
+    fontSize: 12,
+    marginTop: 6,
   },
 
   forgotButton: {
