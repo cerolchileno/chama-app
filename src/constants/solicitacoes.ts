@@ -93,6 +93,34 @@ async function garantirCarregamento(): Promise<void> {
   }
 }
 
+/**
+ * Retorna somente as solicitações vinculadas
+ * ao identificador informado.
+ *
+ * Solicitações antigas sem prestadorId não são
+ * atribuídas automaticamente a nenhum prestador.
+ */
+export function listarSolicitacoesPorPrestador(
+  prestadorId: string
+): Solicitacao[] {
+  const idNormalizado = prestadorId.trim();
+
+  if (!idNormalizado) {
+    return [];
+  }
+
+  return solicitacoes
+    .filter(
+      (item) => item.prestadorId === idNormalizado
+    )
+    .map((item) => ({
+      ...item,
+      avaliacao: item.avaliacao
+        ? { ...item.avaliacao }
+        : undefined,
+    }));
+}
+
 export async function adicionarSolicitacao(
   solicitacao: Solicitacao
 ): Promise<boolean> {
@@ -129,7 +157,8 @@ export async function adicionarSolicitacao(
 
 export async function alterarStatusSolicitacao(
   id: string,
-  novoStatus: StatusSolicitacao
+  novoStatus: StatusSolicitacao,
+  prestadorId?: string
 ): Promise<boolean> {
   await garantirCarregamento();
 
@@ -139,6 +168,18 @@ export async function alterarStatusSolicitacao(
     );
 
     if (!solicitacao) {
+      return false;
+    }
+
+    // Quando a operação informa um prestador,
+    // impede alterações em pedidos de terceiros.
+    if (
+      prestadorId !== undefined &&
+      (
+        !prestadorId.trim() ||
+        solicitacao.prestadorId !== prestadorId.trim()
+      )
+    ) {
       return false;
     }
 

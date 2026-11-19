@@ -14,9 +14,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { PRESTADOR_DEMONSTRACAO_ID } from '@/constants/profissionais';
 import {
   alterarStatusSolicitacao,
-  solicitacoes,
+  carregarSolicitacoes,
+  listarSolicitacoesPorPrestador,
   type Solicitacao,
   type StatusSolicitacao,
 } from '@/constants/solicitacoes';
@@ -26,18 +28,57 @@ const ESCURO = '#1F2328';
 
 export default function PrestadorScreen() {
   const [pedidos, setPedidos] = useState<Solicitacao[]>([]);
+  const [carregando, setCarregando] = useState(true);
   const [operacaoEmAndamento, setOperacaoEmAndamento] =
     useState<string | null>(null);
 
   const operacaoPendente = useRef(false);
+  const telaAtiva = useRef(false);
 
   const carregarPedidos = useCallback(() => {
-    setPedidos(solicitacoes.map((item) => ({ ...item })));
+    setPedidos(
+      listarSolicitacoesPorPrestador(
+        PRESTADOR_DEMONSTRACAO_ID
+      )
+    );
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      carregarPedidos();
+      telaAtiva.current = true;
+      setCarregando(true);
+
+      async function inicializar() {
+        try {
+          await carregarSolicitacoes();
+
+          if (telaAtiva.current) {
+            carregarPedidos();
+          }
+        } catch (error) {
+          console.error(
+            'Erro ao carregar solicitações do prestador:',
+            error
+          );
+
+          if (telaAtiva.current) {
+            Alert.alert(
+              'Erro ao carregar',
+              'Não foi possível carregar as solicitações. Tente novamente.'
+            );
+          }
+        } finally {
+          if (telaAtiva.current) {
+            setCarregando(false);
+          }
+        }
+      }
+
+      void inicializar();
+
+      return () => {
+        telaAtiva.current = false;
+      };
     }, [carregarPedidos])
   );
 
@@ -55,33 +96,40 @@ export default function PrestadorScreen() {
     try {
       const sucesso = await alterarStatusSolicitacao(
         id,
-        novoStatus
+        novoStatus,
+        PRESTADOR_DEMONSTRACAO_ID
       );
 
       if (!sucesso) {
         Alert.alert(
           'Não foi possível atualizar',
-          'A solicitação não foi encontrada ou a alteração de status não é permitida.'
+          'A solicitação não pertence a este prestador ou a alteração de status não é permitida.'
         );
         return;
       }
 
-      carregarPedidos();
-
-      Alert.alert(tituloSucesso, mensagemSucesso);
+      if (telaAtiva.current) {
+        carregarPedidos();
+        Alert.alert(tituloSucesso, mensagemSucesso);
+      }
     } catch (error) {
       console.error(
         'Erro ao atualizar status da solicitação:',
         error
       );
 
-      Alert.alert(
-        'Erro ao salvar',
-        'Não foi possível salvar a alteração no dispositivo. Tente novamente.'
-      );
+      if (telaAtiva.current) {
+        Alert.alert(
+          'Erro ao salvar',
+          'Não foi possível salvar a alteração no dispositivo. Tente novamente.'
+        );
+      }
     } finally {
       operacaoPendente.current = false;
-      setOperacaoEmAndamento(null);
+
+      if (telaAtiva.current) {
+        setOperacaoEmAndamento(null);
+      }
     }
   }
 
@@ -303,7 +351,18 @@ export default function PrestadorScreen() {
             Serviços enviados para você
           </Text>
 
-          {pedidos.length === 0 ? (
+          {carregando ? (
+            <View style={styles.empty}>
+              <ActivityIndicator
+                size="large"
+                color={COR}
+              />
+
+              <Text style={styles.emptyDescription}>
+                Carregando solicitações...
+              </Text>
+            </View>
+          ) : pedidos.length === 0 ? (
             <View style={styles.empty}>
               <View style={styles.emptyIcon}>
                 <Ionicons
@@ -559,6 +618,7 @@ export default function PrestadorScreen() {
             size={23}
             color={COR}
           />
+
           <Text style={styles.navTextActive}>
             Início
           </Text>
@@ -573,6 +633,7 @@ export default function PrestadorScreen() {
             size={23}
             color="#737373"
           />
+
           <Text style={styles.navText}>
             Serviços
           </Text>
@@ -587,6 +648,7 @@ export default function PrestadorScreen() {
             size={23}
             color="#737373"
           />
+
           <Text style={styles.navText}>
             Histórico
           </Text>
@@ -603,6 +665,7 @@ export default function PrestadorScreen() {
             size={23}
             color="#737373"
           />
+
           <Text style={styles.navText}>
             Perfil
           </Text>
