@@ -1,8 +1,11 @@
 
 import { Ionicons } from '@expo/vector-icons';
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, useState } from 'react';
-
+import {
+  router,
+  useFocusEffect,
+  useLocalSearchParams,
+} from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -23,6 +26,15 @@ import {
 import {
   adicionarSolicitacao,
 } from '@/constants/solicitacoes';
+
+import {
+  listarServicosPrestador,
+} from '@/constants/servicosPrestador';
+
+import {
+  buscarProfissionalPorId,
+  PRESTADOR_DEMONSTRACAO_ID,
+} from '@/constants/profissionais';
 
 const COLORS = {
   primary: '#F04B2F',
@@ -51,24 +63,39 @@ function formatarEndereco(endereco: EnderecoCliente): string {
 }
 
 export default function SolicitarScreen() {
-  const { profissional, servico } = useLocalSearchParams<{
+  const {
+    profissional,
+    servico,
+    prestadorId,
+    servicoId,
+  } = useLocalSearchParams<{
     profissional?: string;
     servico?: string;
+    prestadorId?: string;
+    servicoId?: string;
   }>();
 
   const [descricao, setDescricao] = useState('');
   const [enderecoManual, setEnderecoManual] = useState('');
+
   const [enderecosSalvos, setEnderecosSalvos] = useState<
     EnderecoCliente[]
   >([]);
+
   const [enderecoSelecionadoId, setEnderecoSelecionadoId] =
     useState<string | null>(null);
+
   const [modoEndereco, setModoEndereco] =
     useState<ModoEndereco>('MANUAL');
 
   const [carregandoEnderecos, setCarregandoEnderecos] =
     useState(true);
+
   const [enviando, setEnviando] = useState(false);
+
+  // Proteção imediata contra dois toques antes
+  // da atualização do estado do React.
+  const envioEmAndamento = useRef(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -138,8 +165,13 @@ export default function SolicitarScreen() {
     setModoEndereco('SALVO');
   }
 
-  function enviarSolicitacao() {
-    if (enviando || carregandoEnderecos) return;
+  async function enviarSolicitacao() {
+    if (
+      envioEmAndamento.current ||
+      carregandoEnderecos
+    ) {
+      return;
+    }
 
     const endereco =
       modoEndereco === 'SALVO'
@@ -156,25 +188,114 @@ export default function SolicitarScreen() {
       return;
     }
 
+    envioEmAndamento.current = true;
     setEnviando(true);
 
     try {
-      adicionarSolicitacao({
+      let nomeProfissional =
+        profissional || 'Profissional não informado';
+
+      let nomeServico = servico || 'Serviço';
+
+      let prestadorIdValidado: string | undefined;
+      let servicoIdValidado: string | undefined;
+
+      if (prestadorId === PRESTADOR_DEMONSTRACAO_ID) {
+        if (!servicoId) {
+          Alert.alert(
+            'Serviço não selecionado',
+            'Volte ao perfil do profissional e selecione um serviço.'
+          );
+          return;
+        }
+
+        const profissionalEncontrado =
+          buscarProfissionalPorId(prestadorId);
+
+        if (!profissionalEncontrado) {
+          Alert.alert(
+            'Profissional indisponível',
+            'Não foi possível identificar o profissional.'
+          );
+          return;
+        }
+
+        const servicos = await listarServicosPrestador(
+          prestadorId
+        );
+
+        const servicoEncontrado = servicos.find(
+          (item) =>
+            item.id === servicoId &&
+            item.prestadorId === prestadorId &&
+            item.ativo
+        );
+
+        if (!servicoEncontrado) {
+          Alert.alert(
+            'Serviço indisponível',
+            'Este serviço não está mais disponível. Volte ao perfil do profissional e escolha outro serviço.'
+          );
+          return;
+        }
+
+        nomeProfissional = profissionalEncontrado.nome;
+        nomeServico = servicoEncontrado.nome;
+        prestadorIdValidado = prestadorId;
+        servicoIdValidado = servicoEncontrado.id;
+      } else {
+        if (servicoId) {
+          Alert.alert(
+            'Dados inconsistentes',
+            'Não foi possível validar o serviço selecionado. Volte ao perfil do profissional.'
+          );
+          return;
+        }
+
+        if (prestadorId) {
+          const profissionalEncontrado =
+            buscarProfissionalPorId(prestadorId);
+
+          if (!profissionalEncontrado) {
+            Alert.alert(
+              'Profissional indisponível',
+              'Não foi possível identificar o profissional selecionado.'
+            );
+            return;
+          }
+
+          nomeProfissional = profissionalEncontrado.nome;
+          prestadorIdValidado = profissionalEncontrado.id;
+        }
+      }
+
+      const sucesso = await adicionarSolicitacao({
         id: Date.now().toString(),
-        profissional:
-          profissional || 'Profissional não informado',
-        servico: servico || 'Serviço',
+        ...(prestadorIdValidado
+          ? { prestadorId: prestadorIdValidado }
+          : {}),
+        ...(servicoIdValidado
+          ? { servicoId: servicoIdValidado }
+          : {}),
+        profissional: nomeProfissional,
+        servico: nomeServico,
         endereco,
         descricao: descricao.trim(),
         status: 'PENDENTE',
         data: new Date().toLocaleDateString('pt-BR'),
       });
 
+      if (!sucesso) {
+        Alert.alert(
+          'Não foi possível registrar',
+          'Ocorreu um conflito ao registrar a solicitação. Tente novamente.'
+        );
+        return;
+      }
+
       Alert.alert(
-        'Solicitação enviada!',
-        `Seu pedido foi enviado para ${
-          profissional || 'o profissional'
-        }.`,
+        'Solicitação salva!',
+        `Seu pedido para ${nomeProfissional} foi salvo no aplicativo.`,
         [
           {
             text: 'Ver meus pedidos',
@@ -183,13 +304,17 @@ export default function SolicitarScreen() {
         ]
       );
     } catch (error) {
-      console.error('Erro ao enviar solicitação:', error);
+      console.error(
+        'Erro ao persistir solicitação:',
+        error
+      );
 
       Alert.alert(
-        'Erro ao enviar',
-        'Não foi possível registrar a solicitação. Tente novamente.'
+        'Erro ao salvar solicitação',
+        'Não foi possível salvar seu pedido no dispositivo. Verifique o armazenamento e tente novamente.'
       );
     } finally {
+      envioEmAndamento.current = false;
       setEnviando(false);
     }
   }
@@ -285,9 +410,7 @@ export default function SolicitarScreen() {
 
         {carregandoEnderecos ? (
           <View style={styles.loadingBox}>
-            <ActivityIndicator
-              color={COLORS.primary}
-            />
+            <ActivityIndicator color={COLORS.primary} />
 
             <Text style={styles.loadingText}>
               Carregando endereços...
@@ -387,7 +510,9 @@ export default function SolicitarScreen() {
                           styles.addressCardSelected,
                       ]}
                       activeOpacity={0.8}
-                      onPress={() => selecionarEndereco(item.id)}
+                      onPress={() =>
+                        selecionarEndereco(item.id)
+                      }
                     >
                       <View style={styles.addressRadio}>
                         <Ionicons
@@ -414,7 +539,9 @@ export default function SolicitarScreen() {
                           {item.principal && (
                             <View style={styles.primaryBadge}>
                               <Text
-                                style={styles.primaryBadgeText}
+                                style={
+                                  styles.primaryBadgeText
+                                }
                               >
                                 Principal
                               </Text>
@@ -479,7 +606,7 @@ export default function SolicitarScreen() {
           />
 
           <Text style={styles.noticeText}>
-            Ao enviar, sua solicitação ficará como
+            Ao registrar, sua solicitação ficará como
             Pendente. O profissional poderá aceitar ou
             recusar o atendimento.
           </Text>
@@ -491,7 +618,7 @@ export default function SolicitarScreen() {
             (enviando || carregandoEnderecos) &&
               styles.buttonDisabled,
           ]}
-          onPress={enviarSolicitacao}
+          onPress={() => void enviarSolicitacao()}
           disabled={enviando || carregandoEnderecos}
           activeOpacity={0.8}
         >
@@ -507,7 +634,7 @@ export default function SolicitarScreen() {
 
           <Text style={styles.buttonText}>
             {enviando
-              ? 'Enviando...'
+              ? 'Salvando...'
               : 'Enviar solicitação'}
           </Text>
         </TouchableOpacity>

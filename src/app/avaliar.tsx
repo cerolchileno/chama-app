@@ -1,8 +1,9 @@
+
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
-
+import { useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -35,10 +36,14 @@ export default function AvaliarScreen() {
     : undefined;
 
   const [nota, setNota] = useState(0);
-  const [comentario, setComentario] =
-    useState('');
+  const [comentario, setComentario] = useState('');
+  const [enviando, setEnviando] = useState(false);
 
-  function enviarAvaliacao() {
+  const envioPendente = useRef(false);
+
+  async function enviarAvaliacao() {
+    if (envioPendente.current) return;
+
     if (!id || !pedido) {
       Alert.alert(
         'Erro',
@@ -71,31 +76,49 @@ export default function AvaliarScreen() {
       return;
     }
 
-    const sucesso = adicionarAvaliacao(
-      id,
-      nota,
-      comentario
-    );
+    envioPendente.current = true;
+    setEnviando(true);
 
-    if (!sucesso) {
-      Alert.alert(
-        'Erro',
-        'Não foi possível registrar sua avaliação.'
+    try {
+      const sucesso = await adicionarAvaliacao(
+        id,
+        nota,
+        comentario
       );
-      return;
-    }
 
-    Alert.alert(
-      'Avaliação enviada!',
-      'Obrigado por avaliar o atendimento.',
-      [
-        {
-          text: 'Voltar ao histórico',
-          onPress: () =>
-            router.replace('/historico'),
-        },
-      ]
-    );
+      if (!sucesso) {
+        Alert.alert(
+          'Não foi possível avaliar',
+          'Este atendimento não está disponível para avaliação ou já foi avaliado.'
+        );
+        return;
+      }
+
+      Alert.alert(
+        'Avaliação salva!',
+        'Obrigado por avaliar o atendimento.',
+        [
+          {
+            text: 'Voltar ao histórico',
+            onPress: () =>
+              router.replace('/historico'),
+          },
+        ]
+      );
+    } catch (error) {
+      console.error(
+        'Erro ao salvar avaliação:',
+        error
+      );
+
+      Alert.alert(
+        'Erro ao salvar',
+        'Não foi possível salvar sua avaliação no dispositivo. Tente novamente.'
+      );
+    } finally {
+      envioPendente.current = false;
+      setEnviando(false);
+    }
   }
 
   if (!pedido) {
@@ -150,9 +173,7 @@ export default function AvaliarScreen() {
               router.replace('/historico')
             }
           >
-            <Text
-              style={styles.backToHistoryButtonText}
-            >
+            <Text style={styles.backToHistoryButtonText}>
               Voltar ao histórico
             </Text>
           </TouchableOpacity>
@@ -204,8 +225,6 @@ export default function AvaliarScreen() {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-          {/* SERVIÇO */}
-
           <View style={styles.serviceCard}>
             <View style={styles.serviceIcon}>
               <Ionicons
@@ -236,8 +255,6 @@ export default function AvaliarScreen() {
             />
           </View>
 
-          {/* AVALIAÇÃO */}
-
           <View style={styles.ratingCard}>
             <View style={styles.ratingIcon}>
               <Ionicons
@@ -257,28 +274,25 @@ export default function AvaliarScreen() {
             </Text>
 
             <View style={styles.stars}>
-              {[1, 2, 3, 4, 5].map(
-                (estrela) => (
-                  <TouchableOpacity
-                    key={estrela}
-                    activeOpacity={0.7}
-                    style={styles.starButton}
-                    onPress={() =>
-                      setNota(estrela)
+              {[1, 2, 3, 4, 5].map((estrela) => (
+                <TouchableOpacity
+                  key={estrela}
+                  activeOpacity={0.7}
+                  style={styles.starButton}
+                  disabled={enviando}
+                  onPress={() => setNota(estrela)}
+                >
+                  <Ionicons
+                    name={
+                      estrela <= nota
+                        ? 'star'
+                        : 'star-outline'
                     }
-                  >
-                    <Ionicons
-                      name={
-                        estrela <= nota
-                          ? 'star'
-                          : 'star-outline'
-                      }
-                      size={40}
-                      color="#FFB000"
-                    />
-                  </TouchableOpacity>
-                )
-              )}
+                    size={40}
+                    color="#FFB000"
+                  />
+                </TouchableOpacity>
+              ))}
             </View>
 
             <Text style={styles.ratingText}>
@@ -301,8 +315,6 @@ export default function AvaliarScreen() {
                 '5 estrelas — Excelente'}
             </Text>
           </View>
-
-          {/* COMENTÁRIO */}
 
           <View style={styles.commentSection}>
             <View style={styles.commentHeader}>
@@ -329,14 +341,13 @@ export default function AvaliarScreen() {
               maxLength={300}
               value={comentario}
               onChangeText={setComentario}
+              editable={!enviando}
             />
 
             <Text style={styles.counter}>
               {comentario.length}/300
             </Text>
           </View>
-
-          {/* AVISO */}
 
           <View style={styles.infoBox}>
             <Ionicons
@@ -352,25 +363,30 @@ export default function AvaliarScreen() {
             </Text>
           </View>
 
-          {/* BOTÃO */}
-
           <TouchableOpacity
             style={[
               styles.submitButton,
-              nota === 0 &&
+              (nota === 0 || enviando) &&
                 styles.submitButtonDisabled,
             ]}
             activeOpacity={0.8}
-            onPress={enviarAvaliacao}
+            onPress={() => void enviarAvaliacao()}
+            disabled={nota === 0 || enviando}
           >
-            <Ionicons
-              name="star"
-              size={20}
-              color="#FFFFFF"
-            />
+            {enviando ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Ionicons
+                name="star"
+                size={20}
+                color="#FFFFFF"
+              />
+            )}
 
             <Text style={styles.submitButtonText}>
-              Enviar avaliação
+              {enviando
+                ? 'Salvando avaliação...'
+                : 'Enviar avaliação'}
             </Text>
           </TouchableOpacity>
         </ScrollView>
@@ -384,11 +400,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F7F7F7',
   },
-
   keyboardView: {
     flex: 1,
   },
-
   header: {
     backgroundColor: '#1F2328',
     paddingHorizontal: 20,
@@ -397,13 +411,11 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 27,
     borderBottomRightRadius: 27,
   },
-
   headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-
   backButton: {
     width: 42,
     height: 42,
@@ -412,29 +424,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   headerTitle: {
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '900',
   },
-
   headerPlaceholder: {
     width: 42,
   },
-
   headerDescription: {
     color: '#BFC3C7',
     fontSize: 13,
     textAlign: 'center',
     marginTop: 12,
   },
-
   content: {
     padding: 20,
     paddingBottom: 40,
   },
-
   serviceCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
@@ -444,7 +451,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-
   serviceIcon: {
     width: 53,
     height: 53,
@@ -454,30 +460,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
   },
-
   serviceInfo: {
     flex: 1,
   },
-
   serviceLabel: {
     color: '#8A8A8A',
     fontSize: 10,
     fontWeight: '700',
   },
-
   serviceName: {
     color: '#1F2328',
     fontSize: 16,
     fontWeight: '900',
     marginTop: 2,
   },
-
   professionalName: {
     color: '#777777',
     fontSize: 12,
     marginTop: 3,
   },
-
   ratingCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
@@ -487,7 +488,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 18,
   },
-
   ratingIcon: {
     width: 58,
     height: 58,
@@ -496,14 +496,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   ratingTitle: {
     color: '#1F2328',
     fontSize: 20,
     fontWeight: '900',
     marginTop: 15,
   },
-
   ratingDescription: {
     color: '#777777',
     fontSize: 12,
@@ -511,19 +509,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 6,
   },
-
   stars: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 22,
   },
-
   starButton: {
     paddingHorizontal: 3,
     paddingVertical: 5,
   },
-
   ratingText: {
     color: '#62666A',
     fontSize: 12,
@@ -532,7 +527,6 @@ const styles = StyleSheet.create({
     minHeight: 18,
     textAlign: 'center',
   },
-
   commentSection: {
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
@@ -541,19 +535,16 @@ const styles = StyleSheet.create({
     padding: 17,
     marginTop: 18,
   },
-
   commentHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-
   commentTitle: {
     color: '#1F2328',
     fontSize: 16,
     fontWeight: '900',
   },
-
   optional: {
     color: '#8A8A8A',
     fontSize: 10,
@@ -563,14 +554,12 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 8,
   },
-
   commentDescription: {
     color: '#777777',
     fontSize: 11,
     lineHeight: 17,
     marginTop: 5,
   },
-
   commentInput: {
     minHeight: 120,
     backgroundColor: '#F8F8F8',
@@ -584,14 +573,12 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     marginTop: 14,
   },
-
   counter: {
     color: '#A0A0A0',
     fontSize: 10,
     textAlign: 'right',
     marginTop: 6,
   },
-
   infoBox: {
     backgroundColor: '#EEF5FD',
     borderRadius: 14,
@@ -601,14 +588,12 @@ const styles = StyleSheet.create({
     gap: 9,
     marginTop: 18,
   },
-
   infoText: {
     flex: 1,
     color: '#45647F',
     fontSize: 11,
     lineHeight: 17,
   },
-
   submitButton: {
     height: 55,
     borderRadius: 15,
@@ -619,24 +604,20 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 20,
   },
-
   submitButtonDisabled: {
     opacity: 0.5,
   },
-
   submitButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '900',
   },
-
   notFound: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 30,
   },
-
   notFoundIcon: {
     width: 80,
     height: 80,
@@ -645,14 +626,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   notFoundTitle: {
     color: '#1F2328',
     fontSize: 19,
     fontWeight: '900',
     marginTop: 18,
   },
-
   notFoundText: {
     color: '#777777',
     fontSize: 13,
@@ -660,7 +639,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 7,
   },
-
   backToHistoryButton: {
     backgroundColor: '#F04B2F',
     borderRadius: 14,
@@ -668,7 +646,6 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     marginTop: 20,
   },
-
   backToHistoryButtonText: {
     color: '#FFFFFF',
     fontWeight: '800',

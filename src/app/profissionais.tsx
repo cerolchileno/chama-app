@@ -1,6 +1,9 @@
+
 import { Ionicons } from '@expo/vector-icons';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
+  ActivityIndicator,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -9,44 +12,124 @@ import {
   View,
 } from 'react-native';
 
-const profissionais = [
-  {
-    id: '1',
-    nome: 'Carlos Silva',
-    nota: '4,9',
-    avaliacoes: 124,
-    distancia: '2,1 km',
-    preco: 'R$ 80',
-  },
-  {
-    id: '2',
-    nome: 'Marcos Oliveira',
-    nota: '4,8',
-    avaliacoes: 96,
-    distancia: '3,4 km',
-    preco: 'R$ 70',
-  },
-  {
-    id: '3',
-    nome: 'André Santos',
-    nota: '4,8',
-    avaliacoes: 82,
-    distancia: '4,2 km',
-    preco: 'R$ 90',
-  },
-  {
-    id: '4',
-    nome: 'Paulo Ribeiro',
-    nota: '4,7',
-    avaliacoes: 68,
-    distancia: '5,1 km',
-    preco: 'R$ 80',
-  },
-];
+import {
+  formatarPrecoCentavos,
+  listarProfissionais,
+  PRESTADOR_DEMONSTRACAO_ID,
+  type Profissional,
+} from '../constants/profissionais';
+
+import {
+  listarServicosPrestador,
+  type ServicoPrestador,
+} from '../constants/servicosPrestador';
+
+type ProfissionalExibido = Profissional & {
+  precoExibido: string;
+  servicoExibido: string;
+};
 
 export default function ProfissionaisScreen() {
-  const { servico } = useLocalSearchParams<{ servico?: string }>();
+  const { servico } = useLocalSearchParams<{
+    servico?: string;
+  }>();
+
   const titulo = servico || 'Profissionais';
+
+  const [profissionais, setProfissionais] = useState<
+    ProfissionalExibido[]
+  >([]);
+
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      let ativo = true;
+
+      async function carregarProfissionais() {
+        setCarregando(true);
+        setErro(false);
+
+        try {
+          const catalogo = listarProfissionais();
+
+          const servicos = await listarServicosPrestador(
+            PRESTADOR_DEMONSTRACAO_ID
+          );
+
+          const servicosAtivos = servicos.filter(
+            (item) => item.ativo
+          );
+
+          const resultado: ProfissionalExibido[] = catalogo
+            .filter((profissional) => {
+              if (
+                profissional.id ===
+                PRESTADOR_DEMONSTRACAO_ID
+              ) {
+                return servicosAtivos.length > 0;
+              }
+
+              return true;
+            })
+            .map((profissional) => {
+              if (
+                profissional.id ===
+                PRESTADOR_DEMONSTRACAO_ID
+              ) {
+                const servicoMaisBarato =
+                  [...servicosAtivos].sort(
+                    (a, b) =>
+                      a.precoCentavos - b.precoCentavos
+                  )[0];
+
+                return {
+                  ...profissional,
+                  precoExibido:
+                    formatarPrecoCentavos(
+                      servicoMaisBarato?.precoCentavos ??
+                        null
+                    ) ?? 'Sob consulta',
+                  servicoExibido:
+                    servicosAtivos
+                      .map((item) => item.nome)
+                      .slice(0, 2)
+                      .join(' • ') || 'Serviços disponíveis',
+                };
+              }
+
+              return {
+                ...profissional,
+                precoExibido:
+                  formatarPrecoCentavos(
+                    profissional.precoInicialCentavos
+                  ) ?? 'Sob consulta',
+                servicoExibido: titulo,
+              };
+            });
+
+          if (ativo) {
+            setProfissionais(resultado);
+          }
+        } catch {
+          if (ativo) {
+            setErro(true);
+          }
+        } finally {
+          if (ativo) {
+            setCarregando(false);
+          }
+        }
+      }
+
+      void carregarProfissionais();
+
+      return () => {
+        ativo = false;
+      };
+    }, [titulo])
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -55,7 +138,11 @@ export default function ProfissionaisScreen() {
           style={styles.backButton}
           onPress={() => router.back()}
         >
-          <Ionicons name="arrow-back" size={25} color="#1F2328" />
+          <Ionicons
+            name="arrow-back"
+            size={25}
+            color="#1F2328"
+          />
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>{titulo}</Text>
@@ -68,7 +155,12 @@ export default function ProfissionaisScreen() {
         contentContainerStyle={styles.content}
       >
         <View style={styles.search}>
-          <Ionicons name="search" size={20} color="#777" />
+          <Ionicons
+            name="search"
+            size={20}
+            color="#777"
+          />
+
           <Text style={styles.searchText}>
             Buscar profissional ou serviço...
           </Text>
@@ -80,15 +172,21 @@ export default function ProfissionaisScreen() {
           contentContainerStyle={styles.filters}
         >
           <TouchableOpacity style={styles.filterActive}>
-            <Text style={styles.filterActiveText}>Todos</Text>
+            <Text style={styles.filterActiveText}>
+              Todos
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.filter}>
-            <Text style={styles.filterText}>Mais bem avaliados</Text>
+            <Text style={styles.filterText}>
+              Mais bem avaliados
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.filter}>
-            <Text style={styles.filterText}>Mais próximos</Text>
+            <Text style={styles.filterText}>
+              Mais próximos
+            </Text>
           </TouchableOpacity>
         </ScrollView>
 
@@ -96,73 +194,132 @@ export default function ProfissionaisScreen() {
           Profissionais encontrados
         </Text>
 
-        {profissionais.map((profissional) => (
-          <TouchableOpacity
-            key={profissional.id}
-            style={styles.card}
-            activeOpacity={0.8}
-            onPress={() =>
-              router.push({
-                pathname: '/profissional',
-                params: {
-                  id: profissional.id,
-                  servico: titulo,
-                },
-              })
-            }
-          >
-            <View style={styles.avatar}>
-              <Ionicons name="person" size={37} color="#F04B2F" />
-            </View>
-
-            <View style={styles.info}>
-              <View style={styles.nameRow}>
-                <Text style={styles.name}>{profissional.nome}</Text>
-
+        {carregando ? (
+          <View style={styles.feedback}>
+            <ActivityIndicator
+              size="large"
+              color="#F04B2F"
+            />
+            <Text style={styles.feedbackText}>
+              Carregando profissionais...
+            </Text>
+          </View>
+        ) : erro ? (
+          <View style={styles.feedback}>
+            <Ionicons
+              name="alert-circle-outline"
+              size={35}
+              color="#F04B2F"
+            />
+            <Text style={styles.feedbackText}>
+              Não foi possível carregar os profissionais.
+            </Text>
+          </View>
+        ) : profissionais.length === 0 ? (
+          <View style={styles.feedback}>
+            <Ionicons
+              name="people-outline"
+              size={35}
+              color="#777"
+            />
+            <Text style={styles.feedbackText}>
+              Nenhum profissional disponível.
+            </Text>
+          </View>
+        ) : (
+          profissionais.map((profissional) => (
+            <TouchableOpacity
+              key={profissional.id}
+              style={styles.card}
+              activeOpacity={0.8}
+              onPress={() =>
+                router.push({
+                  pathname: '/profissional',
+                  params: {
+                    id: profissional.id,
+                    servico: titulo,
+                  },
+                })
+              }
+            >
+              <View style={styles.avatar}>
                 <Ionicons
-                  name="heart-outline"
-                  size={21}
-                  color="#333"
+                  name="person"
+                  size={37}
+                  color="#F04B2F"
                 />
               </View>
 
-              <View style={styles.ratingRow}>
-                <Ionicons name="star" size={15} color="#FFB000" />
+              <View style={styles.info}>
+                <View style={styles.nameRow}>
+                  <Text style={styles.name}>
+                    {profissional.nome}
+                  </Text>
 
-                <Text style={styles.rating}>
-                  {profissional.nota}
-                </Text>
-
-                <Text style={styles.reviews}>
-                  ({profissional.avaliacoes})
-                </Text>
-              </View>
-
-              <Text style={styles.service}>{titulo}</Text>
-
-              <View style={styles.bottomRow}>
-                <View style={styles.distance}>
                   <Ionicons
-                    name="location-outline"
-                    size={14}
-                    color="#777"
+                    name="heart-outline"
+                    size={21}
+                    color="#333"
                   />
-
-                  <Text style={styles.distanceText}>
-                    {profissional.distancia} • Maricá, RJ
-                  </Text>
                 </View>
 
-                <View>
-                  <Text style={styles.from}>A partir de</Text>
-                  <Text style={styles.price}>
-                    {profissional.preco}
-                  </Text>
+                <View style={styles.ratingRow}>
+                  {profissional.nota !== null ? (
+                    <>
+                      <Ionicons
+                        name="star"
+                        size={15}
+                        color="#FFB000"
+                      />
+
+                      <Text style={styles.rating}>
+                        {profissional.nota}
+                      </Text>
+
+                      <Text style={styles.reviews}>
+                        ({profissional.avaliacoes})
+                      </Text>
+                    </>
+                  ) : (
+                    <Text style={styles.reviews}>
+                      Ainda sem avaliações
+                    </Text>
+                  )}
+                </View>
+
+                <Text style={styles.service}>
+                  {profissional.servicoExibido}
+                </Text>
+
+                <View style={styles.bottomRow}>
+                  <View style={styles.distance}>
+                    <Ionicons
+                      name="location-outline"
+                      size={14}
+                      color="#777"
+                    />
+
+                    <Text style={styles.distanceText}>
+                      {profissional.distancia
+                        ? `${profissional.distancia} • Maricá, RJ`
+                        : 'Localização não informada'}
+                    </Text>
+                  </View>
+
+                  <View>
+                    <Text style={styles.from}>
+                      A partir de
+                    </Text>
+
+                    <Text style={styles.price}>
+                      {profissional.precoExibido}
+                    </Text>
+                  </View>
                 </View>
               </View>
-            </View>
-          </TouchableOpacity>
-        ))}
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -349,5 +506,18 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '900',
     textAlign: 'right',
+  },
+
+  feedback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 45,
+    gap: 12,
+  },
+
+  feedbackText: {
+    color: '#777',
+    fontSize: 14,
+    textAlign: 'center',
   },
 });
