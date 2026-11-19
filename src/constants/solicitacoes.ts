@@ -1,3 +1,6 @@
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 export type StatusSolicitacao =
   | 'PENDENTE'
   | 'ACEITA'
@@ -23,12 +26,72 @@ export type Solicitacao = {
   avaliacao?: Avaliacao;
 };
 
+const STORAGE_KEY = '@chama:solicitacoes';
+
 export const solicitacoes: Solicitacao[] = [];
+
+let inicializado = false;
+let carregamentoPendente: Promise<void> | null = null;
+let filaGravacao: Promise<void> = Promise.resolve();
+
+function salvarSolicitacoes() {
+  const dados = JSON.stringify(solicitacoes);
+
+  filaGravacao = filaGravacao
+    .catch(() => undefined)
+    .then(async () => {
+      await AsyncStorage.setItem(STORAGE_KEY, dados);
+    });
+
+  void filaGravacao.catch((error) => {
+    console.error('Erro ao salvar solicitações:', error);
+  });
+
+  return filaGravacao;
+}
+
+export function carregarSolicitacoes(): Promise<void> {
+  if (inicializado) {
+    return Promise.resolve();
+  }
+
+  if (carregamentoPendente) {
+    return carregamentoPendente;
+  }
+
+  carregamentoPendente = (async () => {
+    // Aguarda gravações anteriores, caso existam.
+    await filaGravacao;
+
+    const dados = await AsyncStorage.getItem(STORAGE_KEY);
+
+    if (dados) {
+      const lista: unknown = JSON.parse(dados);
+
+      if (!Array.isArray(lista)) {
+        throw new Error('Formato de solicitações inválido');
+      }
+
+      solicitacoes.splice(
+        0,
+        solicitacoes.length,
+        ...(lista as Solicitacao[])
+      );
+    }
+
+    inicializado = true;
+  })().finally(() => {
+    carregamentoPendente = null;
+  });
+
+  return carregamentoPendente;
+}
 
 export function adicionarSolicitacao(
   solicitacao: Solicitacao
 ) {
   solicitacoes.unshift(solicitacao);
+  void salvarSolicitacoes();
 }
 
 export function alterarStatusSolicitacao(
@@ -44,13 +107,12 @@ export function alterarStatusSolicitacao(
   }
 
   solicitacao.status = novoStatus;
+  void salvarSolicitacoes();
 
   return true;
 }
 
-export function buscarSolicitacaoPorId(
-  id: string
-) {
+export function buscarSolicitacaoPorId(id: string) {
   return solicitacoes.find(
     (item) => item.id === id
   );
@@ -71,7 +133,7 @@ export function adicionarAvaliacao(
     return false;
   }
 
-  if (nota < 1 || nota > 5) {
+  if (!Number.isFinite(nota) || nota < 1 || nota > 5) {
     return false;
   }
 
@@ -80,6 +142,8 @@ export function adicionarAvaliacao(
     comentario: comentario.trim(),
     data: new Date().toLocaleDateString('pt-BR'),
   };
+
+  void salvarSolicitacoes();
 
   return true;
 }
