@@ -17,6 +17,8 @@ export type Avaliacao = {
 
 export type Solicitacao = {
   id: string;
+  prestadorId?: string;
+  servicoId?: string;
   profissional: string;
   servico: string;
   endereco: string;
@@ -32,35 +34,34 @@ export const solicitacoes: Solicitacao[] = [];
 
 let inicializado = false;
 let carregamentoPendente: Promise<void> | null = null;
-let filaGravacao: Promise<void> = Promise.resolve();
+let filaOperacoes: Promise<void> = Promise.resolve();
 
-function salvarSolicitacoes(): Promise<void> {
-  const dados = JSON.stringify(solicitacoes);
-
-  filaGravacao = filaGravacao
+function executarOperacao<T>(
+  operacao: () => Promise<T>
+): Promise<T> {
+  const resultado = filaOperacoes
     .catch(() => undefined)
-    .then(async () => {
-      await AsyncStorage.setItem(STORAGE_KEY, dados);
-    });
+    .then(operacao);
 
-  void filaGravacao.catch((error) => {
-    console.error('Erro ao salvar solicitações:', error);
-  });
+  filaOperacoes = resultado.then(
+    () => undefined,
+    () => undefined
+  );
 
-  return filaGravacao;
+  return resultado;
 }
 
 export function carregarSolicitacoes(): Promise<void> {
-  if (inicializado) {
-    return Promise.resolve();
-  }
-
   if (carregamentoPendente) {
     return carregamentoPendente;
   }
 
-  carregamentoPendente = (async () => {
-    await filaGravacao;
+  if (inicializado) {
+    return Promise.resolve();
+  }
+
+  carregamentoPendente = executarOperacao(async () => {
+    if (inicializado) return;
 
     const dados = await AsyncStorage.getItem(STORAGE_KEY);
 
@@ -79,45 +80,96 @@ export function carregarSolicitacoes(): Promise<void> {
     }
 
     inicializado = true;
-  })().finally(() => {
+  }).finally(() => {
     carregamentoPendente = null;
   });
 
   return carregamentoPendente;
 }
 
-export function adicionarSolicitacao(
-  solicitacao: Solicitacao
-): void {
-  solicitacoes.unshift(solicitacao);
-  void salvarSolicitacoes();
+async function garantirCarregamento(): Promise<void> {
+  if (!inicializado) {
+    await carregarSolicitacoes();
+  }
 }
 
-export function alterarStatusSolicitacao(
+export async function adicionarSolicitacao(
+  solicitacao: Solicitacao
+): Promise<boolean> {
+  await garantirCarregamento();
+
+  return executarOperacao(async () => {
+    if (
+      solicitacoes.some(
+        (item) => item.id === solicitacao.id
+      )
+    ) {
+      return false;
+    }
+
+    const atualizadas = [
+      { ...solicitacao },
+      ...solicitacoes,
+    ];
+
+    await AsyncStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(atualizadas)
+    );
+
+    solicitacoes.splice(
+      0,
+      solicitacoes.length,
+      ...atualizadas
+    );
+
+    return true;
+  });
+}
+
+export async function alterarStatusSolicitacao(
   id: string,
   novoStatus: StatusSolicitacao
-): boolean {
-  const solicitacao = solicitacoes.find(
-    (item) => item.id === id
-  );
+): Promise<boolean> {
+  await garantirCarregamento();
 
-  if (!solicitacao) {
-    return false;
-  }
+  return executarOperacao(async () => {
+    const solicitacao = solicitacoes.find(
+      (item) => item.id === id
+    );
 
-  if (
-    !podeAlterarStatusSolicitacao(
-      solicitacao.status,
-      novoStatus
-    )
-  ) {
-    return false;
-  }
+    if (!solicitacao) {
+      return false;
+    }
 
-  solicitacao.status = novoStatus;
-  void salvarSolicitacoes();
+    if (
+      !podeAlterarStatusSolicitacao(
+        solicitacao.status,
+        novoStatus
+      )
+    ) {
+      return false;
+    }
 
-  return true;
+    const atualizadas = solicitacoes.map((item) =>
+      item.id === id
+        ? { ...item, status: novoStatus }
+        : { ...item }
+    );
+
+    await AsyncStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(atualizadas)
+    );
+
+    solicitacoes.splice(
+      0,
+      solicitacoes.length,
+      ...atualizadas
+    );
+
+    return true;
+  });
 }
 
 export function buscarSolicitacaoPorId(
@@ -128,36 +180,60 @@ export function buscarSolicitacaoPorId(
   );
 }
 
-export function adicionarAvaliacao(
+export async function adicionarAvaliacao(
   id: string,
   nota: number,
   comentario: string
-): boolean {
-  const solicitacao = buscarSolicitacaoPorId(id);
+): Promise<boolean> {
+  await garantirCarregamento();
 
-  if (!solicitacao) {
-    return false;
-  }
+  return executarOperacao(async () => {
+    const solicitacao = solicitacoes.find(
+      (item) => item.id === id
+    );
 
-  if (solicitacao.status !== 'CONCLUIDA') {
-    return false;
-  }
+    if (!solicitacao) {
+      return false;
+    }
 
-  if (
-    !Number.isFinite(nota) ||
-    nota < 1 ||
-    nota > 5
-  ) {
-    return false;
-  }
+    if (
+      solicitacao.status !== 'CONCLUIDA' ||
+      solicitacao.avaliacao
+    ) {
+      return false;
+    }
 
-  solicitacao.avaliacao = {
-    nota,
-    comentario: comentario.trim(),
-    data: new Date().toLocaleDateString('pt-BR'),
-  };
+    if (
+      !Number.isFinite(nota) ||
+      nota < 1 ||
+      nota > 5
+    ) {
+      return false;
+    }
 
-  void salvarSolicitacoes();
+    const avaliacao: Avaliacao = {
+      nota,
+      comentario: comentario.trim(),
+      data: new Date().toLocaleDateString('pt-BR'),
+    };
 
-  return true;
+    const atualizadas = solicitacoes.map((item) =>
+      item.id === id
+        ? { ...item, avaliacao }
+        : { ...item }
+    );
+
+    await AsyncStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(atualizadas)
+    );
+
+    solicitacoes.splice(
+      0,
+      solicitacoes.length,
+      ...atualizadas
+    );
+
+    return true;
+  });
 }

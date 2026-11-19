@@ -1,8 +1,9 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   ScrollView,
   StatusBar,
@@ -17,6 +18,7 @@ import {
   alterarStatusSolicitacao,
   solicitacoes,
   type Solicitacao,
+  type StatusSolicitacao,
 } from '@/constants/solicitacoes';
 
 const COR = '#F04B2F';
@@ -24,9 +26,13 @@ const ESCURO = '#1F2328';
 
 export default function PrestadorScreen() {
   const [pedidos, setPedidos] = useState<Solicitacao[]>([]);
+  const [operacaoEmAndamento, setOperacaoEmAndamento] =
+    useState<string | null>(null);
+
+  const operacaoPendente = useRef(false);
 
   const carregarPedidos = useCallback(() => {
-    setPedidos([...solicitacoes]);
+    setPedidos(solicitacoes.map((item) => ({ ...item })));
   }, []);
 
   useFocusEffect(
@@ -35,41 +41,80 @@ export default function PrestadorScreen() {
     }, [carregarPedidos])
   );
 
-  function aceitarPedido(id: string) {
-    const sucesso = alterarStatusSolicitacao(id, 'ACEITA');
+  async function executarAlteracao(
+    id: string,
+    novoStatus: StatusSolicitacao,
+    tituloSucesso: string,
+    mensagemSucesso: string
+  ) {
+    if (operacaoPendente.current) return;
 
-    if (!sucesso) {
-      Alert.alert('Erro', 'Não foi possível aceitar a solicitação.');
-      return;
+    operacaoPendente.current = true;
+    setOperacaoEmAndamento(id);
+
+    try {
+      const sucesso = await alterarStatusSolicitacao(
+        id,
+        novoStatus
+      );
+
+      if (!sucesso) {
+        Alert.alert(
+          'Não foi possível atualizar',
+          'A solicitação não foi encontrada ou a alteração de status não é permitida.'
+        );
+        return;
+      }
+
+      carregarPedidos();
+
+      Alert.alert(tituloSucesso, mensagemSucesso);
+    } catch (error) {
+      console.error(
+        'Erro ao atualizar status da solicitação:',
+        error
+      );
+
+      Alert.alert(
+        'Erro ao salvar',
+        'Não foi possível salvar a alteração no dispositivo. Tente novamente.'
+      );
+    } finally {
+      operacaoPendente.current = false;
+      setOperacaoEmAndamento(null);
     }
+  }
 
-    carregarPedidos();
-    Alert.alert(
+  function aceitarPedido(id: string) {
+    void executarAlteracao(
+      id,
+      'ACEITA',
       'Solicitação aceita',
       'O cliente poderá acompanhar a atualização pelo CHAMA.'
     );
   }
 
   function recusarPedido(id: string) {
+    if (operacaoPendente.current) return;
+
     Alert.alert(
       'Recusar solicitação',
       'Deseja realmente recusar este serviço?',
       [
-        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
         {
           text: 'Recusar',
           style: 'destructive',
           onPress: () => {
-            const sucesso = alterarStatusSolicitacao(
+            void executarAlteracao(
               id,
-              'RECUSADA'
+              'RECUSADA',
+              'Solicitação recusada',
+              'O pedido foi marcado como recusado.'
             );
-
-            if (sucesso) {
-              carregarPedidos();
-            } else {
-              Alert.alert('Erro', 'Não foi possível recusar.');
-            }
           },
         },
       ]
@@ -77,36 +122,18 @@ export default function PrestadorScreen() {
   }
 
   function iniciarServico(id: string) {
-    const sucesso = alterarStatusSolicitacao(
+    void executarAlteracao(
       id,
-      'EM_ANDAMENTO'
-    );
-
-    if (!sucesso) {
-      Alert.alert('Erro', 'Não foi possível iniciar o serviço.');
-      return;
-    }
-
-    carregarPedidos();
-    Alert.alert(
+      'EM_ANDAMENTO',
       'Serviço iniciado',
       'O pedido agora está em andamento.'
     );
   }
 
   function concluirServico(id: string) {
-    const sucesso = alterarStatusSolicitacao(
+    void executarAlteracao(
       id,
-      'CONCLUIDA'
-    );
-
-    if (!sucesso) {
-      Alert.alert('Erro', 'Não foi possível concluir o serviço.');
-      return;
-    }
-
-    carregarPedidos();
-    Alert.alert(
+      'CONCLUIDA',
       'Serviço concluído',
       'O atendimento foi marcado como concluído.'
     );
@@ -142,21 +169,24 @@ export default function PrestadorScreen() {
   }
 
   const pendentes = pedidos.filter(
-    (p) => p.status === 'PENDENTE'
+    (pedido) => pedido.status === 'PENDENTE'
   ).length;
 
   const ativos = pedidos.filter(
-    (p) =>
-      p.status === 'ACEITA' ||
-      p.status === 'EM_ANDAMENTO'
+    (pedido) =>
+      pedido.status === 'ACEITA' ||
+      pedido.status === 'EM_ANDAMENTO'
   ).length;
 
   const concluidos = pedidos.filter(
-    (p) => p.status === 'CONCLUIDA'
+    (pedido) => pedido.status === 'CONCLUIDA'
   ).length;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView
+      style={styles.container}
+      edges={['top']}
+    >
       <StatusBar barStyle="light-content" />
 
       <ScrollView
@@ -202,6 +232,7 @@ export default function PrestadorScreen() {
           <Text style={styles.greeting}>
             Olá, profissional!
           </Text>
+
           <Text style={styles.headerDescription}>
             Acompanhe suas solicitações e atendimentos.
           </Text>
@@ -216,9 +247,11 @@ export default function PrestadorScreen() {
                 color={COR}
               />
             </View>
+
             <Text style={styles.summaryNumber}>
               {pendentes}
             </Text>
+
             <Text style={styles.summaryLabel}>
               Pendentes
             </Text>
@@ -232,9 +265,11 @@ export default function PrestadorScreen() {
                 color={COR}
               />
             </View>
+
             <Text style={styles.summaryNumber}>
               {ativos}
             </Text>
+
             <Text style={styles.summaryLabel}>
               Em atendimento
             </Text>
@@ -248,9 +283,11 @@ export default function PrestadorScreen() {
                 color={COR}
               />
             </View>
+
             <Text style={styles.summaryNumber}>
               {concluidos}
             </Text>
+
             <Text style={styles.summaryLabel}>
               Concluídos
             </Text>
@@ -261,6 +298,7 @@ export default function PrestadorScreen() {
           <Text style={styles.sectionTitle}>
             Solicitações
           </Text>
+
           <Text style={styles.sectionDescription}>
             Serviços enviados para você
           </Text>
@@ -278,177 +316,236 @@ export default function PrestadorScreen() {
               <Text style={styles.emptyTitle}>
                 Nenhuma solicitação
               </Text>
+
               <Text style={styles.emptyDescription}>
                 Quando um cliente solicitar seus serviços,
                 o pedido aparecerá aqui.
               </Text>
             </View>
           ) : (
-            pedidos.map((pedido) => (
-              <View
-                key={pedido.id}
-                style={styles.requestCard}
-              >
-                <View style={styles.requestHeader}>
-                  <View style={styles.serviceIcon}>
-                    <Ionicons
-                      name="construct-outline"
-                      size={26}
-                      color={COR}
-                    />
-                  </View>
+            pedidos.map((pedido) => {
+              const processando =
+                operacaoEmAndamento === pedido.id;
 
-                  <View style={styles.requestInfo}>
-                    <Text style={styles.serviceName}>
-                      {pedido.servico}
-                    </Text>
-                    <Text style={styles.requestDate}>
-                      Solicitado em {pedido.data}
-                    </Text>
-                  </View>
+              const bloqueado =
+                operacaoEmAndamento !== null;
 
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      {
-                        backgroundColor:
-                          `${corStatus(pedido.status)}15`,
-                      },
-                    ]}
-                  >
-                    <Text
+              return (
+                <View
+                  key={pedido.id}
+                  style={styles.requestCard}
+                >
+                  <View style={styles.requestHeader}>
+                    <View style={styles.serviceIcon}>
+                      <Ionicons
+                        name="construct-outline"
+                        size={26}
+                        color={COR}
+                      />
+                    </View>
+
+                    <View style={styles.requestInfo}>
+                      <Text style={styles.serviceName}>
+                        {pedido.servico}
+                      </Text>
+
+                      <Text style={styles.requestDate}>
+                        Solicitado em {pedido.data}
+                      </Text>
+                    </View>
+
+                    <View
                       style={[
-                        styles.statusText,
-                        { color: corStatus(pedido.status) },
+                        styles.statusBadge,
+                        {
+                          backgroundColor:
+                            `${corStatus(pedido.status)}15`,
+                        },
                       ]}
                     >
-                      {textoStatus(pedido.status)}
+                      <Text
+                        style={[
+                          styles.statusText,
+                          {
+                            color: corStatus(
+                              pedido.status
+                            ),
+                          },
+                        ]}
+                      >
+                        {textoStatus(pedido.status)}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.divider} />
+
+                  <View style={styles.detailRow}>
+                    <Ionicons
+                      name="location-outline"
+                      size={18}
+                      color="#777777"
+                    />
+
+                    <Text style={styles.detailText}>
+                      {pedido.endereco}
                     </Text>
                   </View>
-                </View>
 
-                <View style={styles.divider} />
-
-                <View style={styles.detailRow}>
-                  <Ionicons
-                    name="location-outline"
-                    size={18}
-                    color="#777777"
-                  />
-                  <Text style={styles.detailText}>
-                    {pedido.endereco}
+                  <Text style={styles.descriptionLabel}>
+                    Descrição do serviço
                   </Text>
-                </View>
 
-                <Text style={styles.descriptionLabel}>
-                  Descrição do serviço
-                </Text>
-                <Text style={styles.description}>
-                  {pedido.descricao}
-                </Text>
+                  <Text style={styles.description}>
+                    {pedido.descricao}
+                  </Text>
 
-                {pedido.status === 'PENDENTE' && (
-                  <View style={styles.actionsRow}>
-                    <TouchableOpacity
-                      style={styles.rejectButton}
-                      onPress={() =>
-                        recusarPedido(pedido.id)
-                      }
-                    >
-                      <Ionicons
-                        name="close"
-                        size={20}
-                        color="#D63C3C"
+                  {processando && (
+                    <View style={styles.processingRow}>
+                      <ActivityIndicator
+                        size="small"
+                        color={COR}
                       />
-                      <Text style={styles.rejectText}>
-                        Recusar
-                      </Text>
-                    </TouchableOpacity>
 
+                      <Text style={styles.processingText}>
+                        Salvando alteração...
+                      </Text>
+                    </View>
+                  )}
+
+                  {pedido.status === 'PENDENTE' && (
+                    <View style={styles.actionsRow}>
+                      <TouchableOpacity
+                        style={[
+                          styles.rejectButton,
+                          bloqueado &&
+                            styles.disabledButton,
+                        ]}
+                        disabled={bloqueado}
+                        onPress={() =>
+                          recusarPedido(pedido.id)
+                        }
+                      >
+                        <Ionicons
+                          name="close"
+                          size={20}
+                          color="#D63C3C"
+                        />
+
+                        <Text style={styles.rejectText}>
+                          Recusar
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[
+                          styles.acceptButton,
+                          bloqueado &&
+                            styles.disabledButton,
+                        ]}
+                        disabled={bloqueado}
+                        onPress={() =>
+                          aceitarPedido(pedido.id)
+                        }
+                      >
+                        <Ionicons
+                          name="checkmark"
+                          size={20}
+                          color="#FFFFFF"
+                        />
+
+                        <Text style={styles.acceptText}>
+                          Aceitar
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {pedido.status === 'ACEITA' && (
                     <TouchableOpacity
-                      style={styles.acceptButton}
+                      style={[
+                        styles.primaryButton,
+                        bloqueado &&
+                          styles.disabledButton,
+                      ]}
+                      disabled={bloqueado}
                       onPress={() =>
-                        aceitarPedido(pedido.id)
+                        iniciarServico(pedido.id)
                       }
                     >
                       <Ionicons
-                        name="checkmark"
+                        name="play-outline"
                         size={20}
                         color="#FFFFFF"
                       />
-                      <Text style={styles.acceptText}>
-                        Aceitar
+
+                      <Text
+                        style={styles.primaryButtonText}
+                      >
+                        Iniciar serviço
                       </Text>
                     </TouchableOpacity>
-                  </View>
-                )}
+                  )}
 
-                {pedido.status === 'ACEITA' && (
-                  <TouchableOpacity
-                    style={styles.primaryButton}
-                    onPress={() =>
-                      iniciarServico(pedido.id)
-                    }
-                  >
-                    <Ionicons
-                      name="play-outline"
-                      size={20}
-                      color="#FFFFFF"
-                    />
-                    <Text style={styles.primaryButtonText}>
-                      Iniciar serviço
-                    </Text>
-                  </TouchableOpacity>
-                )}
+                  {pedido.status === 'EM_ANDAMENTO' && (
+                    <TouchableOpacity
+                      style={[
+                        styles.completeButton,
+                        bloqueado &&
+                          styles.disabledButton,
+                      ]}
+                      disabled={bloqueado}
+                      onPress={() =>
+                        concluirServico(pedido.id)
+                      }
+                    >
+                      <Ionicons
+                        name="checkmark-circle-outline"
+                        size={20}
+                        color="#FFFFFF"
+                      />
 
-                {pedido.status === 'EM_ANDAMENTO' && (
-                  <TouchableOpacity
-                    style={styles.completeButton}
-                    onPress={() =>
-                      concluirServico(pedido.id)
-                    }
-                  >
-                    <Ionicons
-                      name="checkmark-circle-outline"
-                      size={20}
-                      color="#FFFFFF"
-                    />
-                    <Text style={styles.primaryButtonText}>
-                      Concluir serviço
-                    </Text>
-                  </TouchableOpacity>
-                )}
+                      <Text
+                        style={styles.primaryButtonText}
+                      >
+                        Concluir serviço
+                      </Text>
+                    </TouchableOpacity>
+                  )}
 
-                {pedido.status === 'CONCLUIDA' && (
-                  <View style={styles.completedBox}>
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={20}
-                      color="#1A9B63"
-                    />
-                    <Text style={styles.completedText}>
-                      Atendimento concluído
-                    </Text>
-                  </View>
-                )}
+                  {pedido.status === 'CONCLUIDA' && (
+                    <View style={styles.completedBox}>
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={20}
+                        color="#1A9B63"
+                      />
 
-                {(pedido.status === 'RECUSADA' ||
-                  pedido.status === 'CANCELADA') && (
-                  <View style={styles.rejectedBox}>
-                    <Ionicons
-                      name="close-circle"
-                      size={20}
-                      color="#D63C3C"
-                    />
-                    <Text style={styles.rejectedText}>
-                      {pedido.status === 'RECUSADA'
-                        ? 'Solicitação recusada'
-                        : 'Solicitação cancelada'}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            ))
+                      <Text style={styles.completedText}>
+                        Atendimento concluído
+                      </Text>
+                    </View>
+                  )}
+
+                  {(pedido.status === 'RECUSADA' ||
+                    pedido.status === 'CANCELADA') && (
+                    <View style={styles.rejectedBox}>
+                      <Ionicons
+                        name="close-circle"
+                        size={20}
+                        color="#D63C3C"
+                      />
+
+                      <Text style={styles.rejectedText}>
+                        {pedido.status === 'RECUSADA'
+                          ? 'Solicitação recusada'
+                          : 'Solicitação cancelada'}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })
           )}
         </View>
 
@@ -469,12 +566,7 @@ export default function PrestadorScreen() {
 
         <TouchableOpacity
           style={styles.navItem}
-          onPress={() =>
-            Alert.alert(
-              'Meus serviços',
-              'O gerenciamento dos serviços oferecidos será implementado em uma próxima etapa.'
-            )
-          }
+          onPress={() => router.push('/meus-servicos')}
         >
           <Ionicons
             name="briefcase-outline"
@@ -736,6 +828,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     marginTop: 5,
+  },
+  processingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+  },
+  processingText: {
+    color: '#777777',
+    fontSize: 12,
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
   actionsRow: {
     flexDirection: 'row',
