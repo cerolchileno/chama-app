@@ -13,8 +13,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { PRESTADOR_DEMONSTRACAO_ID } from '@/constants/profissionais';
 import {
-  solicitacoes,
+  carregarSolicitacoes,
+  listarSolicitacoesPorPrestador,
   type Solicitacao,
 } from '@/constants/solicitacoes';
 
@@ -95,7 +97,26 @@ export default function PerfilPrestadorScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      setPedidos([...solicitacoes]);
+      let ativo = true;
+
+      async function carregarPedidos() {
+        try {
+          await carregarSolicitacoes();
+          if (ativo) {
+            setPedidos(
+              listarSolicitacoesPorPrestador(PRESTADOR_DEMONSTRACAO_ID)
+            );
+          }
+        } catch (error) {
+          console.error('Erro ao carregar indicadores do prestador:', error);
+          if (ativo) setPedidos([]);
+        }
+      }
+
+      void carregarPedidos();
+      return () => {
+        ativo = false;
+      };
     }, [])
   );
 
