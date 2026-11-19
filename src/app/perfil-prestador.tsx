@@ -339,8 +339,8 @@ export default function PerfilPrestadorScreen() {
             <MenuItem
               icon="construct-outline"
               title="Serviços oferecidos"
-              subtitle="Cadastre suas especialidades"
-              onPress={() => aviso('Serviços oferecidos')}
+              subtitle="Cadastre e gerencie seus serviços"
+              onPress={() => router.push('/meus-servicos')}
             />
 
             <View style={styles.divider} />
