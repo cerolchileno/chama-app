@@ -325,7 +325,7 @@ export default function PerfilClienteScreen() {
               icon="location-outline"
               title="Meus endereços"
               subtitle="Gerencie seus locais de atendimento"
-              onPress={() => aviso('Meus endereços')}
+              onPress={() => router.push('/enderecos')}
             />
 
             <View style={styles.divider} />
