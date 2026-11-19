@@ -1,6 +1,7 @@
 
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
   Alert,
   ScrollView,
@@ -11,6 +12,8 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { carregarPerfilCliente } from '@/constants/perfilCliente';
 
 const COLORS = {
   primary: '#F04B2F',
@@ -24,7 +27,107 @@ const COLORS = {
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
+type MenuItemProps = {
+  icon: IconName;
+  title: string;
+  subtitle?: string;
+  onPress: () => void;
+  danger?: boolean;
+};
+
+function MenuItem({
+  icon,
+  title,
+  subtitle,
+  onPress,
+  danger = false,
+}: MenuItemProps) {
+  return (
+    <TouchableOpacity
+      style={styles.menuItem}
+      activeOpacity={0.75}
+      onPress={onPress}
+    >
+      <View
+        style={[
+          styles.menuIcon,
+          danger && styles.dangerIcon,
+        ]}
+      >
+        <Ionicons
+          name={icon}
+          size={21}
+          color={danger ? '#D64545' : COLORS.primary}
+        />
+      </View>
+
+      <View style={styles.menuTextContainer}>
+        <Text
+          style={[
+            styles.menuTitle,
+            danger && { color: '#D64545' },
+          ]}
+        >
+          {title}
+        </Text>
+
+        {subtitle ? (
+          <Text style={styles.menuSubtitle}>
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
+
+      {!danger && (
+        <Ionicons
+          name="chevron-forward"
+          size={18}
+          color="#AAB0B6"
+        />
+      )}
+    </TouchableOpacity>
+  );
+}
+
 export default function PerfilClienteScreen() {
+  const [nomeCliente, setNomeCliente] = useState('Cliente CHAMA');
+
+  useFocusEffect(
+    useCallback(() => {
+      let ativo = true;
+
+      async function atualizarPerfil() {
+        try {
+          const perfil = await carregarPerfilCliente();
+
+          if (!ativo) return;
+
+          setNomeCliente(
+            perfil?.nome.trim() || 'Cliente CHAMA'
+          );
+        } catch (error) {
+          console.error(
+            'Erro ao atualizar nome do cliente:',
+            error
+          );
+
+          if (ativo) {
+            Alert.alert(
+              'Erro ao carregar perfil',
+              'Não foi possível recuperar seus dados pessoais.'
+            );
+          }
+        }
+      }
+
+      void atualizarPerfil();
+
+      return () => {
+        ativo = false;
+      };
+    }, [])
+  );
+
   function aviso(titulo: string) {
     Alert.alert(
       titulo,
@@ -47,67 +150,11 @@ export default function PerfilClienteScreen() {
     );
   }
 
-  function MenuItem({
-    icon,
-    title,
-    subtitle,
-    onPress,
-    danger = false,
-  }: {
-    icon: IconName;
-    title: string;
-    subtitle?: string;
-    onPress: () => void;
-    danger?: boolean;
-  }) {
-    return (
-      <TouchableOpacity
-        style={styles.menuItem}
-        activeOpacity={0.75}
-        onPress={onPress}
-      >
-        <View
-          style={[
-            styles.menuIcon,
-            danger && styles.dangerIcon,
-          ]}
-        >
-          <Ionicons
-            name={icon}
-            size={21}
-            color={danger ? '#D64545' : COLORS.primary}
-          />
-        </View>
-
-        <View style={styles.menuTextContainer}>
-          <Text
-            style={[
-              styles.menuTitle,
-              danger && { color: '#D64545' },
-            ]}
-          >
-            {title}
-          </Text>
-          {subtitle ? (
-            <Text style={styles.menuSubtitle}>
-              {subtitle}
-            </Text>
-          ) : null}
-        </View>
-
-        {!danger && (
-          <Ionicons
-            name="chevron-forward"
-            size={18}
-            color="#AAB0B6"
-          />
-        )}
-      </TouchableOpacity>
-    );
-  }
-
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView
+      style={styles.container}
+      edges={['top']}
+    >
       <StatusBar barStyle="light-content" />
 
       <ScrollView
@@ -119,6 +166,7 @@ export default function PerfilClienteScreen() {
             <TouchableOpacity
               style={styles.backButton}
               onPress={() => router.back()}
+              accessibilityLabel="Voltar"
             >
               <Ionicons
                 name="arrow-back"
@@ -134,6 +182,7 @@ export default function PerfilClienteScreen() {
             <TouchableOpacity
               style={styles.backButton}
               onPress={() => aviso('Configurações')}
+              accessibilityLabel="Configurações"
             >
               <Ionicons
                 name="settings-outline"
@@ -153,7 +202,7 @@ export default function PerfilClienteScreen() {
             </View>
 
             <Text style={styles.userName}>
-              Cliente CHAMA
+              {nomeCliente}
             </Text>
 
             <View style={styles.accountBadge}>
@@ -182,10 +231,12 @@ export default function PerfilClienteScreen() {
                 color={COLORS.primary}
               />
             </View>
+
             <View style={{ flex: 1 }}>
               <Text style={styles.welcomeTitle}>
                 Sua experiência CHAMA
               </Text>
+
               <Text style={styles.welcomeSubtitle}>
                 Gerencie suas solicitações e acompanhe seus atendimentos.
               </Text>
@@ -209,12 +260,15 @@ export default function PerfilClienteScreen() {
                   color={COLORS.primary}
                 />
               </View>
+
               <Text style={styles.quickTitle}>
                 Meus pedidos
               </Text>
+
               <Text style={styles.quickSubtitle}>
                 Em andamento
               </Text>
+
               <Ionicons
                 name="arrow-forward"
                 size={17}
@@ -235,12 +289,15 @@ export default function PerfilClienteScreen() {
                   color={COLORS.primary}
                 />
               </View>
+
               <Text style={styles.quickTitle}>
                 Histórico
               </Text>
+
               <Text style={styles.quickSubtitle}>
                 Serviços encerrados
               </Text>
+
               <Ionicons
                 name="arrow-forward"
                 size={17}
@@ -259,16 +316,20 @@ export default function PerfilClienteScreen() {
               icon="person-outline"
               title="Dados pessoais"
               subtitle="Nome, telefone e e-mail"
-              onPress={() => aviso('Dados pessoais')}
+              onPress={() => router.push('/dados-pessoais')}
             />
+
             <View style={styles.divider} />
+
             <MenuItem
               icon="location-outline"
               title="Meus endereços"
               subtitle="Gerencie seus locais de atendimento"
               onPress={() => aviso('Meus endereços')}
             />
+
             <View style={styles.divider} />
+
             <MenuItem
               icon="heart-outline"
               title="Profissionais favoritos"
@@ -288,14 +349,18 @@ export default function PerfilClienteScreen() {
               subtitle="Avisos e atualizações de pedidos"
               onPress={() => aviso('Notificações')}
             />
+
             <View style={styles.divider} />
+
             <MenuItem
               icon="shield-checkmark-outline"
               title="Privacidade e segurança"
               subtitle="Proteção dos dados da sua conta"
               onPress={() => aviso('Privacidade e segurança')}
             />
+
             <View style={styles.divider} />
+
             <MenuItem
               icon="help-circle-outline"
               title="Central de ajuda"
@@ -317,6 +382,7 @@ export default function PerfilClienteScreen() {
           <Text style={styles.footer}>
             CHAMA • Precisa de um serviço? CHAMA.
           </Text>
+
           <Text style={styles.version}>
             Versão MVP
           </Text>
@@ -380,6 +446,7 @@ const styles = StyleSheet.create({
     fontSize: 23,
     fontWeight: '900',
     marginTop: 13,
+    textAlign: 'center',
   },
   accountBadge: {
     marginTop: 10,
