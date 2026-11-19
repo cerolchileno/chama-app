@@ -1,6 +1,6 @@
 
 import { Ionicons } from '@expo/vector-icons';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import {
   SafeAreaView,
@@ -12,7 +12,10 @@ import {
   View,
 } from 'react-native';
 
+import { PRESTADOR_DEMONSTRACAO_ID } from '@/constants/profissionais';
 import {
+  carregarSolicitacoes,
+  listarSolicitacoesPorPrestador,
   type Solicitacao,
   solicitacoes,
 } from '@/constants/solicitacoes';
@@ -68,20 +71,46 @@ function iconeStatus(status: Solicitacao['status']): Icone {
 }
 
 export default function HistoricoScreen() {
+  const { origem } = useLocalSearchParams<{ origem?: string }>();
+  const ehPrestador = origem === 'prestador';
   const [historico, setHistorico] = useState<Solicitacao[]>([]);
   const [filtro, setFiltro] = useState<FiltroHistorico>('TODOS');
 
   useFocusEffect(
     useCallback(() => {
-      const encerrados = solicitacoes.filter(
-        (pedido) =>
-          pedido.status === 'CONCLUIDA' ||
-          pedido.status === 'RECUSADA' ||
-          pedido.status === 'CANCELADA'
-      );
+      let ativo = true;
 
-      setHistorico([...encerrados]);
-    }, [])
+      async function carregarHistorico() {
+        try {
+          await carregarSolicitacoes();
+          if (!ativo) return;
+
+          const pedidos = ehPrestador
+            ? listarSolicitacoesPorPrestador(PRESTADOR_DEMONSTRACAO_ID)
+            : solicitacoes;
+
+          const encerrados = pedidos.filter(
+            (pedido) =>
+              pedido.status === 'CONCLUIDA' ||
+              pedido.status === 'RECUSADA' ||
+              pedido.status === 'CANCELADA'
+          );
+
+          setHistorico(encerrados.map((pedido) => ({ ...pedido })));
+        } catch (error) {
+          console.error('Erro ao carregar histórico:', error);
+          if (ativo) {
+            setHistorico([]);
+          }
+        }
+      }
+
+      void carregarHistorico();
+
+      return () => {
+        ativo = false;
+      };
+    }, [ehPrestador])
   );
 
   const contadores = useMemo(
@@ -377,7 +406,8 @@ export default function HistoricoScreen() {
                     </Text>
                   </View>
 
-                  {pedido.status === 'CONCLUIDA' &&
+                  {!ehPrestador &&
+                    pedido.status === 'CONCLUIDA' &&
                     !pedido.avaliacao && (
                       <>
                         <View style={styles.completedMessage}>
@@ -420,7 +450,7 @@ export default function HistoricoScreen() {
                             <Text
                               style={styles.ratingResultLabel}
                             >
-                              Sua avaliação
+                              {ehPrestador ? 'Avaliação recebida' : 'Sua avaliação'}
                             </Text>
 
                             <View

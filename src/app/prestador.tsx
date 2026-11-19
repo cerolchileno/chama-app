@@ -641,7 +641,12 @@ export default function PrestadorScreen() {
 
         <TouchableOpacity
           style={styles.navItem}
-          onPress={() => router.push('/historico')}
+          onPress={() =>
+              router.push({
+                pathname: '/historico',
+                params: { origem: 'prestador' },
+              })
+            }
         >
           <Ionicons
             name="time-outline"
