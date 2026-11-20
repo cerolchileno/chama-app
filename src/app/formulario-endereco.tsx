@@ -232,8 +232,8 @@ export default function FormularioEnderecoScreen() {
   async function consultarCep() {
     if (consultandoCep || salvando) return;
 
-    const cep = campos.cep.replace(/\\D/g, '');
-    if (!/^\\d{8}$/.test(cep)) {
+    const cep = campos.cep.replace(/\D/g, '');
+    if (!/^\d{8}$/.test(cep)) {
       setMensagemCep('Informe um CEP com 8 dígitos para consultar.');
       return;
     }
@@ -251,7 +251,7 @@ export default function FormularioEnderecoScreen() {
 
       setCampos((anteriores) => {
         // Não sobrescrever o formulário se o CEP mudou durante a consulta.
-        if (anteriores.cep.replace(/\\D/g, '') !== cep) return anteriores;
+        if (anteriores.cep.replace(/\D/g, '') !== cep) return anteriores;
         return {
           ...anteriores,
           rua: dados.logradouro || anteriores.rua,
