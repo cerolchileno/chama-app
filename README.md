@@ -1,56 +1,102 @@
-# Welcome to your Expo app 👋
+# CHAMA — Precisa de um serviço? CHAMA.
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Aplicativo de conexão entre **clientes** e **prestadores de serviços**, desenvolvido como MVP acadêmico da P2 e base para evolução posterior no Trabalho de Conclusão de Curso (TCC) de Engenharia de Software.
 
-## Get started
+## Visão geral
 
-1. Install dependencies
+O CHAMA permite ao cliente explorar categorias e profissionais, cadastrar endereços, solicitar serviços, acompanhar pedidos e avaliar atendimentos concluídos. O prestador pode gerenciar serviços oferecidos, consultar solicitações vinculadas ao seu perfil e atualizar o andamento dos atendimentos.
 
-   ```bash
-   npm install
-   ```
+> **Estado do projeto:** MVP demonstrativo. Os fluxos usam dados locais e persistência no dispositivo; não há autenticação real, banco de dados remoto ou backend de produção. Não é um serviço comercial em operação.
 
-2. Start the app
+## Tecnologias
 
-   ```bash
-   npx expo start
-   ```
+- React Native, React e TypeScript
+- Expo SDK 57 e Expo Router (navegação)
+- StyleSheet e Flexbox (interface)
+- AsyncStorage (persistência local)
+- ViaCEP (consulta pública de CEP)
+- Vitest (testes de regras de negócio)
 
-In the output, you'll find options to open the app in a
+## Funcionalidades do MVP
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+**Cliente**
+- Telas de entrada, cadastro demonstrativo e navegação
+- Exploração de categorias, profissionais e serviços
+- Solicitação de serviços e escolha de endereço salvo
+- Acompanhamento de solicitações, histórico e avaliações
+- Perfil, dados pessoais e gerenciamento de endereços
+- Busca de CEP com preenchimento de rua, bairro, cidade e UF; número e complemento permanecem manuais
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+**Prestador**
+- Área e perfil do prestador
+- Cadastro e gerenciamento local de serviços oferecidos
+- Visualização de solicitações vinculadas ao prestador
+- Atualização de status conforme regras de transição
+- Histórico e indicadores de atendimentos do próprio prestador
 
-## Get a fresh project
+## Requisitos para executar
 
-When you're ready, run:
+- Node.js e npm instalados
+- Navegador atualizado para testar no Expo Web; para celular, ambiente Expo compatível
 
 ```bash
-npm run reset-project
+git clone https://github.com/cerolchileno/chama-app.git
+cd chama-app
+npm install
+npx expo start --web -c
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Para iniciar o Expo com opções de dispositivo:
 
-### Other setup steps
+```bash
+npx expo start -c
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+> O endereço local e a porta são mostrados no terminal. Recursos específicos de Android/iOS devem ser validados também em dispositivo ou emulador.
 
-## Learn more
+## Testes e verificações
 
-To learn more about developing your project with Expo, look at the following resources:
+Verificação de tipos:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```bash
+npx tsc --noEmit
+```
 
-## Join the community
+Testes automatizados existentes, quando encontrados pelo Vitest:
 
-Join our community of developers creating universal apps.
+```bash
+npx vitest run
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Fluxos manuais recomendados:
+1. Entrar no acesso demonstrativo e navegar como cliente.
+2. Criar endereço; consultar o CEP `01001000`; conferir preenchimento e salvar.
+3. Fechar e reabrir o aplicativo; confirmar que o endereço persiste.
+4. Solicitar um serviço, selecionar endereço salvo e conferir o histórico.
+5. Acessar o perfil de prestador, gerenciar serviços e acompanhar pedidos correspondentes.
+6. Atualizar status de uma solicitação e verificar a mudança no histórico.
+7. Avaliar somente um serviço concluído e confirmar a avaliação salva.
+8. Verificar mensagens para CEP inválido, CEP inexistente e falha de rede.
+
+**Atenção:** os comandos acima são instruções de execução; a presença deles não significa que todos os testes já foram executados com sucesso.
+
+## Estrutura principal
+
+- `src/app/` — telas e rotas do Expo Router
+- `src/constants/` — modelos, regras e armazenamento local
+- `assets/` — recursos visuais do aplicativo
+
+## Limitações e próximos passos
+
+O MVP não substitui autenticação real, controle de acesso em servidor, integração de pagamentos, notificações ou sincronização entre dispositivos. Esses itens, juntamente com backend, banco de dados, testes de integração e refinamento de identidade visual, pertencem à evolução do TCC.
+
+## Equipe
+
+- Victor Hugo
+- Kaua Mendes
+
+**Projeto acadêmico — Engenharia de Software, Universidade de Vassouras (Maricá).**
+
+## Repositório
+
+https://github.com/cerolchileno/chama-app
