@@ -35,6 +35,15 @@ const COLORS = {
   danger: '#DC2626',
 };
 
+type RespostaViaCep = {
+  cep?: string;
+  logradouro?: string;
+  bairro?: string;
+  localidade?: string;
+  uf?: string;
+  erro?: boolean;
+};
+
 type CamposEndereco = {
   apelido: string;
   cep: string;
@@ -121,6 +130,8 @@ export default function FormularioEnderecoScreen() {
   const [erros, setErros] = useState<ErrosFormulario>({});
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
+  const [consultandoCep, setConsultandoCep] = useState(false);
+  const [mensagemCep, setMensagemCep] = useState('');
   const [enderecoEncontrado, setEnderecoEncontrado] =
     useState(true);
 
@@ -216,6 +227,54 @@ export default function FormularioEnderecoScreen() {
 
       return atualizados;
     });
+  }
+
+  async function consultarCep() {
+    if (consultandoCep || salvando) return;
+
+    const cep = campos.cep.replace(/\\D/g, '');
+    if (!/^\\d{8}$/.test(cep)) {
+      setMensagemCep('Informe um CEP com 8 dígitos para consultar.');
+      return;
+    }
+
+    setConsultandoCep(true);
+    setMensagemCep('');
+    try {
+      const resposta = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      if (!resposta.ok) throw new Error('Falha na consulta');
+      const dados: RespostaViaCep = await resposta.json();
+      if (dados.erro) {
+        setMensagemCep('CEP não encontrado. Confira os números digitados.');
+        return;
+      }
+
+      setCampos((anteriores) => {
+        // Não sobrescrever o formulário se o CEP mudou durante a consulta.
+        if (anteriores.cep.replace(/\\D/g, '') !== cep) return anteriores;
+        return {
+          ...anteriores,
+          rua: dados.logradouro || anteriores.rua,
+          bairro: dados.bairro || anteriores.bairro,
+          cidade: dados.localidade || anteriores.cidade,
+          estado: dados.uf || anteriores.estado,
+        };
+      });
+      setErros((anteriores) => {
+        const atualizados = { ...anteriores };
+        delete atualizados.cep;
+        delete atualizados.rua;
+        delete atualizados.bairro;
+        delete atualizados.cidade;
+        delete atualizados.estado;
+        return atualizados;
+      });
+      setMensagemCep('Consulta concluída. Confira o endereço e informe o número.');
+    } catch {
+      setMensagemCep('Não foi possível consultar o CEP. Confira sua conexão ou preencha manualmente.');
+    } finally {
+      setConsultandoCep(false);
+    }
   }
 
   async function salvar() {
@@ -352,6 +411,7 @@ export default function FormularioEnderecoScreen() {
             }
 
             atualizarCampo(campo, novoValor);
+            if (campo === 'cep') setMensagemCep('');
           }}
           keyboardType={opcoes?.keyboardType ?? 'default'}
           maxLength={opcoes?.maxLength}
@@ -456,18 +516,27 @@ export default function FormularioEnderecoScreen() {
                 }
               )}
 
-              <View style={styles.cepNotice}>
-                <Ionicons
-                  name="information-circle-outline"
-                  size={19}
-                  color={COLORS.primary}
-                />
-                <Text style={styles.cepNoticeText}>
-                  Por enquanto, preencha os dados
-                  manualmente. A consulta automática
-                  por CEP será integrada posteriormente.
+              <TouchableOpacity
+                style={[styles.cepButton, (consultandoCep || salvando) && styles.disabledButton]}
+                onPress={() => void consultarCep()}
+                disabled={consultandoCep || salvando}
+                accessibilityRole="button"
+                accessibilityLabel="Consultar endereço pelo CEP"
+              >
+                {consultandoCep ? (
+                  <ActivityIndicator color={COLORS.primary} />
+                ) : (
+                  <Ionicons name="search-outline" size={19} color={COLORS.primary} />
+                )}
+                <Text style={styles.cepButtonText}>
+                  {consultandoCep ? 'Consultando CEP...' : 'Buscar endereço pelo CEP'}
                 </Text>
-              </View>
+              </TouchableOpacity>
+              {!!mensagemCep && (
+                <Text style={styles.cepFeedback} accessibilityRole="text">
+                  {mensagemCep}
+                </Text>
+              )}
 
               {renderizarCampo(
                 'Rua ou avenida',
@@ -674,6 +743,27 @@ const styles = StyleSheet.create({
     color: COLORS.danger,
     fontSize: 11,
     marginTop: 6,
+  },
+  cepButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 9,
+    padding: 13,
+    borderRadius: 12,
+    backgroundColor: COLORS.soft,
+    marginBottom: 8,
+  },
+  cepButtonText: {
+    color: COLORS.primary,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  cepFeedback: {
+    color: '#6E7379',
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 18,
   },
   cepNotice: {
     flexDirection: 'row',
